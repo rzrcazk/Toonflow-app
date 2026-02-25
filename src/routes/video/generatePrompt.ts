@@ -61,6 +61,14 @@ export default router.post(
   async (req, res) => {
     const { prompt, images, duration, type = "single", videoConfigId } = req.body;
     const mode = type as GenerateMode;
+    const imageList = images ?? [];
+    const shotCount = imageList.length;
+
+    if (shotCount === 0 && mode !== "text") {
+      return res.status(400).send(error("请提供分镜图片"));
+    }
+    const avgDuration = shotCount > 0 ? (parseFloat(String(duration)) / shotCount).toFixed(1) : String(duration);
+
     let videoConfigData;
     if (videoConfigId) {
       videoConfigData = await u
@@ -71,10 +79,7 @@ export default router.post(
         .first();
       if (!videoConfigData) return res.status(500).send(error("视频配置不存在"));
     }
-    const imagePrompts = images.map((i: { filePath: string; prompt: string }, index: number) => `Image ${index + 1}: ${i.prompt}`).join("\n");
-
-    const shotCount = images.length;
-    const avgDuration = (parseFloat(duration) / shotCount).toFixed(1);
+    const imagePrompts = imageList.map((i: { filePath: string; prompt: string }, index: number) => `Image ${index + 1}: ${i.prompt}`).join("\n");
     const promptConfig = await getSystemPrompt(mode);
     const promptAiConfig = await u.getPromptAi("videoPrompt");
     try {
@@ -106,6 +111,10 @@ Parameters:
 - Total Duration: ${duration}s
 - Shot Count: ${shotCount}
 - Average Duration: ${avgDuration}s per shot
+
+Requirements:
+- 生成内容中必须包含每个镜头/时间段的人物对话描述。
+- 若有对白，请写出角色与台词的对应关系（格式如「角色名：台词」），便于后续按角色匹配音色。
 
 Generate storyboard prompts:`,
             },

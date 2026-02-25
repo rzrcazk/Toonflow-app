@@ -20,7 +20,23 @@ export default router.post(
       .db("t_assets")
       .where("scriptId", scriptId)
       .where("type", "分镜")
-      .select("id", "name", "intro", "prompt", "filePath", "duration", "videoPrompt", "scriptId", "type", "segmentId", "shotIndex").orderBy("segmentId", "asc").orderBy("shotIndex", "asc");
+      .select(
+        "id",
+        "name",
+        "intro",
+        "prompt",
+        "filePath",
+        "duration",
+        "videoPrompt",
+        "scriptId",
+        "type",
+        "segmentId",
+        "shotIndex",
+        "dialogue",
+        "narration",
+      )
+      .orderBy("segmentId", "asc")
+      .orderBy("shotIndex", "asc");
 
     const assetsIds = assets.map((item: any) => item.id);
 
@@ -59,6 +75,8 @@ export default router.post(
           segmentId: item.segmentId ?? 1,
           shotIndex: item.shotIndex ?? 1,
           generateImg: imgArr,
+          dialogue: item.dialogue ?? "",
+          narration: item.narration ?? "",
         };
       })
     );

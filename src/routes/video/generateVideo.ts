@@ -118,8 +118,45 @@ export default router.post(
     // 立即返回，不等待视频生成
     res.status(200).send(success({ id: videoId, configId: configId || null }));
 
+    // 分镜对话与角色音色：用于生成视频时按角色统一音色（若厂商 API 支持）
+    const pathnameSet = new Set(storyboardImgs);
+    const storyboardAssets = await u
+      .db("t_assets")
+      .where({ scriptId, type: "分镜" })
+      .select("dialogue", "narration", "filePath");
+    const dialogueParts = (storyboardAssets as { dialogue?: string | null; narration?: string | null; filePath?: string | null }[])
+      .filter((a) => a.filePath && (pathnameSet.has(a.filePath) || pathnameSet.has(a.filePath!.replace(/^\//, ""))))
+      .map((a) => a.dialogue)
+      .filter((d): d is string => !!d && d.trim() !== "");
+    const dialogue = dialogueParts.length > 0 ? dialogueParts.join("\n") : undefined;
+
+    const narrationParts = (storyboardAssets as { dialogue?: string | null; narration?: string | null; filePath?: string | null }[])
+      .filter((a) => a.filePath && (pathnameSet.has(a.filePath) || pathnameSet.has(a.filePath!.replace(/^\//, ""))))
+      .map((a) => a.narration)
+      .filter((n): n is string => !!n && n.trim() !== "");
+    const narration = narrationParts.length > 0 ? narrationParts.join("\n") : undefined;
+
+    const roleAssets = await u.db("t_assets").where({ projectId, type: "角色" }).select("name", "voiceId");
+    const characterVoiceMap: Record<string, string> = {};
+    for (const r of roleAssets as { name?: string | null; voiceId?: string | null }[]) {
+      if (r.name && r.voiceId && String(r.voiceId).trim() !== "") characterVoiceMap[r.name] = String(r.voiceId);
+    }
+
     // 异步生成视频
-    generateVideoAsync(videoId, projectId, fileUrl, savePath, prompt, duration, resolution, audioEnabled, aiConfigData);
+    generateVideoAsync(
+      videoId,
+      projectId,
+      fileUrl,
+      savePath,
+      prompt,
+      duration,
+      resolution,
+      audioEnabled,
+      aiConfigData,
+      dialogue,
+      Object.keys(characterVoiceMap).length > 0 ? characterVoiceMap : undefined,
+      narration,
+    );
   },
 );
 
@@ -134,6 +171,9 @@ async function generateVideoAsync(
   resolution: string,
   audioEnabled: boolean,
   aiConfigData: t_config,
+  dialogue?: string,
+  characterVoiceMap?: Record<string, string>,
+  narration?: string,
 ) {
   try {
     const projectData = await u.db("t_project").where("id", projectId).select("artStyle", "videoRatio").first();
@@ -175,6 +215,9 @@ ${prompt}
         aspectRatio: projectData?.videoRatio as any,
         resolution: resolution as any,
         audio: audioEnabled,
+        ...(dialogue && { dialogue }),
+        ...(characterVoiceMap && Object.keys(characterVoiceMap).length > 0 && { characterVoiceMap }),
+        ...(narration && { narration }),
       },
       {
         baseURL: aiConfigData?.baseUrl!,

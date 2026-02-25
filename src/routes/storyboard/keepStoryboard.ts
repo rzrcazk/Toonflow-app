@@ -21,6 +21,8 @@ export default router.post(
         scriptId: z.number(),
         segmentId: z.number(),
         shotIndex: z.number(),
+        dialogue: z.string().optional().nullable(),
+        narration: z.string().optional().nullable(),
       })
     ),
   }),

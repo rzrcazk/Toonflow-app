@@ -126,6 +126,7 @@ export default router.post(
       assetsId: id,
     });
     const apiConfig = await u.getPromptAi("assetsImage");
+
     try {
       const contentStr = await u.ai.image(
         {

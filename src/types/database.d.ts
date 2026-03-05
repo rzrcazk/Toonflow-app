@@ -1,4 +1,4 @@
-// @db-hash ff588d3c647b1c797615fbe606af63f4
+// @db-hash ab4a22cd977ccd6980edae6c71edc6e8
 //该文件由脚本自动生成，请勿手动修改
 
 export interface o_agentDeploy {
@@ -125,14 +125,6 @@ export interface o_video {
   'id'?: number;
   'name'?: string | null;
 }
-export interface t_setting {
-  'id'?: number;
-  'imageModel'?: string | null;
-  'languageModel'?: string | null;
-  'projectId'?: number | null;
-  'tokenKey'?: string | null;
-  'userId'?: number | null;
-}
 
 export interface DB {
   "o_agentDeploy": o_agentDeploy;
@@ -156,5 +148,4 @@ export interface DB {
   "o_storyboardScript": o_storyboardScript;
   "o_user": o_user;
   "o_video": o_video;
-  "t_setting": t_setting;
 }

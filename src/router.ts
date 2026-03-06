@@ -1,4 +1,4 @@
-// @routes-hash 7fb1fd1c26d10223c241a3b2d04ff9cb
+// @routes-hash 398a92ab5a096e1f62ef5d7e7e3c0fc7
 import { Express } from "express";
 
 import route1 from "./routes/artStyle/getArtStyle";
@@ -6,12 +6,12 @@ import route2 from "./routes/assets/addAssets";
 import route3 from "./routes/assets/batchDelete";
 import route4 from "./routes/assets/batchGenerationData";
 import route5 from "./routes/assets/delAssets";
-import route6 from "./routes/assets/generateAssets";
-import route7 from "./routes/assets/getAssetsApi";
-import route8 from "./routes/assets/getImage";
-import route9 from "./routes/assets/polishAssetsPrompt";
-import route10 from "./routes/assets/saveAssets";
-import route11 from "./routes/assets/updateAssets";
+import route6 from "./routes/assets/getAssetsApi";
+import route7 from "./routes/assets/getImage";
+import route8 from "./routes/assets/saveAssets";
+import route9 from "./routes/assets/updateAssets";
+import route10 from "./routes/assetsGenerate/generateAssets";
+import route11 from "./routes/assetsGenerate/polishAssetsPrompt";
 import route12 from "./routes/delSql/clearDatabase";
 import route13 from "./routes/delSql/deleteAllData";
 import route14 from "./routes/general/generalStatistics";
@@ -47,12 +47,12 @@ export default async (app: Express) => {
   app.use("/assets/batchDelete", route3);
   app.use("/assets/batchGenerationData", route4);
   app.use("/assets/delAssets", route5);
-  app.use("/assets/generateAssets", route6);
-  app.use("/assets/getAssetsApi", route7);
-  app.use("/assets/getImage", route8);
-  app.use("/assets/polishAssetsPrompt", route9);
-  app.use("/assets/saveAssets", route10);
-  app.use("/assets/updateAssets", route11);
+  app.use("/assets/getAssetsApi", route6);
+  app.use("/assets/getImage", route7);
+  app.use("/assets/saveAssets", route8);
+  app.use("/assets/updateAssets", route9);
+  app.use("/assetsGenerate/generateAssets", route10);
+  app.use("/assetsGenerate/polishAssetsPrompt", route11);
   app.use("/delSql/clearDatabase", route12);
   app.use("/delSql/deleteAllData", route13);
   app.use("/general/generalStatistics", route14);

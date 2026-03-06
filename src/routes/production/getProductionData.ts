@@ -10,7 +10,6 @@ export default router.post(
     "/",
     validateFields({
         projectId: z.number(),
-
     }),
     async (req, res) => {
         const { projectId } = req.body;

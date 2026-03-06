@@ -500,71 +500,122 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_video",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.text("resolution");
+        table.text("prompt");
+        table.text("filePath");
+        table.text("firstFrame");
+        table.text("storyboardImgs");
+        table.text("model");
+        table.text("errorReason");
+        table.integer("time");
+        table.integer("state");
+        table.integer("scriptId");
+        table.integer("configId"); // 关联的视频配置ID
         table.primary(["id"]);
         table.unique(["id"]);
       },
     },
-    // {
-    //   name: "t_assets",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.text("name");
-    //     table.text("intro");
-    //     table.text("prompt");
-    //     table.text("remark");
-    //     table.text("videoPrompt");
-    //     table.text("type");
-    //     table.text("episode");
-    //     table.text("duration");
-    //     table.text("filePath");
-    //     table.integer("projectId");
-    //     table.integer("scriptId");
-    //     table.integer("segmentId");
-    //     table.integer("shotIndex");
-    //     table.text("state");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_chatHistory",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.text("type");
-    //     table.text("data");
-    //     table.text("novel");
-    //     table.integer("projectId");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_novel",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.integer("chapterIndex");
-    //     table.text("reel");
-    //     table.text("chapter");
-    //     table.text("chapterData");
-    //     table.integer("projectId");
-    //     table.integer("createTime");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_outline",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.integer("episode");
-    //     table.text("data");
-    //     table.integer("projectId");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
+    //聊天记录
+    {
+      name: "o_chatHistory",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.text("type");
+        table.text("data");
+        table.text("novel");
+        table.integer("projectId");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    //视频配置
+    {
+      name: "o_videoConfig",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("scriptId"); // 关联的脚本ID
+        table.integer("projectId"); // 关联的项目ID
+        table.integer("aiConfigId"); //ai配置ID
+        table.integer("audioEnabled"); //声音
+        table.text("manufacturer"); // 厂商：volcengine/runninghub/openAi
+        table.text("mode"); // 模式：startEnd/multi/single
+        table.text("startFrame"); // 首帧图片信息 JSON
+        table.text("endFrame"); // 尾帧图片信息 JSON
+        table.text("images"); // 多图模式的图片列表 JSON
+        table.text("resolution"); // 分辨率
+        table.integer("duration"); // 时长
+        table.text("prompt"); // 提示词
+        table.integer("selectedResultId"); // 选中的生成结果ID
+        table.integer("createTime"); // 创建时间
+        table.integer("updateTime"); // 更新时间
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
+    //AI模型映射表
+    {
+      name: "o_aiModelMap",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.integer("configId"); // 模型列表id
+        table.text("name");
+        table.text("key");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+      initData: async (knex) => {
+        await knex("t_aiModelMap").insert([
+          {
+            id: 1,
+            configId: null,
+            name: "分镜Agent",
+            key: "storyboardAgent",
+          },
+          {
+            id: 2,
+            configId: null,
+            name: "分镜Agent图片生成",
+            key: "storyboardImage",
+          },
+          {
+            id: 3,
+            configId: null,
+            name: "大纲故事线Agent",
+            key: "outlineScriptAgent",
+          },
+          {
+            id: 4,
+            configId: null,
+            name: "资产提示词润色",
+            key: "assetsPrompt",
+          },
+          {
+            id: 5,
+            configId: null,
+            name: "资产图片生成",
+            key: "assetsImage",
+          },
+          {
+            id: 6,
+            configId: null,
+            name: "剧本生成",
+            key: "generateScript",
+          },
+          {
+            id: 7,
+            configId: null,
+            name: "视频提示词生成",
+            key: "videoPrompt",
+          },
+          {
+            id: 8,
+            configId: null,
+            name: "图片编辑",
+            key: "editImage",
+          },
+        ]);
+      },
+    },
     // {
     //   name: "t_storyline",
     //   builder: (table) => {
@@ -573,52 +624,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
     //     table.text("content");
     //     table.text("novelIds");
     //     table.integer("projectId");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_project",
-    //   builder: (table) => {
-    //     table.integer("id");
-    //     table.string("projectType");
-    //     table.text("name");
-    //     table.text("intro");
-    //     table.text("type");
-    //     table.text("artStyle");
-    //     table.text("videoRatio");
-    //     table.integer("createTime");
-    //     table.integer("userId");
-    //     table.primary(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_script",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.text("name");
-    //     table.text("content");
-    //     table.integer("projectId");
-    //     table.integer("outlineId");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_video",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.text("resolution");
-    //     table.text("prompt");
-    //     table.text("filePath");
-    //     table.text("firstFrame");
-    //     table.text("storyboardImgs");
-    //     table.text("model");
-    //     table.text("errorReason");
-    //     table.integer("time");
-    //     table.integer("state");
-    //     table.integer("scriptId");
-    //     table.integer("configId"); // 关联的视频配置ID
     //     table.primary(["id"]);
     //     table.unique(["id"]);
     //   },
@@ -636,140 +641,6 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
     //     table.text("state");
     //     table.primary(["id"]);
     //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_config",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.text("type");
-    //     table.text("model");
-    //     table.text("modelType");
-    //     table.text("apiKey");
-    //     table.text("baseUrl");
-    //     table.text("manufacturer");
-    //     table.integer("createTime");
-    //     table.integer("index");
-    //     table.integer("userId");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    //   initData: async (knex) => {},
-    // },
-    // {
-    //   name: "t_myTasks",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.integer("projectId");
-    //     table.string("taskClass");
-    //     table.string("relatedObjects");
-    //     table.string("model");
-    //     table.text("describe");
-    //     table.string("state");
-    //     table.integer("startTime");
-    //     table.text("reason");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    //   initData: async (knex) => {},
-    // },
-    // {
-    //   name: "t_artStyle",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.string("name");
-    //     table.text("styles");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    //   initData: async (knex) => {
-    //     await knex("t_artStyle").insert(artStyle.map((item, index) => ({ id: index + 1, name: item.name, styles: JSON.stringify(item.styles) })));
-    //   },
-    // },
-    // {
-    //   name: "t_videoConfig",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.integer("scriptId"); // 关联的脚本ID
-    //     table.integer("projectId"); // 关联的项目ID
-    //     table.integer("aiConfigId"); //ai配置ID
-    //     table.integer("audioEnabled"); //声音
-    //     table.text("manufacturer"); // 厂商：volcengine/runninghub/openAi
-    //     table.text("mode"); // 模式：startEnd/multi/single
-    //     table.text("startFrame"); // 首帧图片信息 JSON
-    //     table.text("endFrame"); // 尾帧图片信息 JSON
-    //     table.text("images"); // 多图模式的图片列表 JSON
-    //     table.text("resolution"); // 分辨率
-    //     table.integer("duration"); // 时长
-    //     table.text("prompt"); // 提示词
-    //     table.integer("selectedResultId"); // 选中的生成结果ID
-    //     table.integer("createTime"); // 创建时间
-    //     table.integer("updateTime"); // 更新时间
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    // },
-    // {
-    //   name: "t_aiModelMap",
-    //   builder: (table) => {
-    //     table.integer("id").notNullable();
-    //     table.integer("configId"); // 模型列表id
-    //     table.text("name");
-    //     table.text("key");
-    //     table.primary(["id"]);
-    //     table.unique(["id"]);
-    //   },
-    //   initData: async (knex) => {
-    //     await knex("t_aiModelMap").insert([
-    //       {
-    //         id: 1,
-    //         configId: null,
-    //         name: "分镜Agent",
-    //         key: "storyboardAgent",
-    //       },
-    //       {
-    //         id: 2,
-    //         configId: null,
-    //         name: "分镜Agent图片生成",
-    //         key: "storyboardImage",
-    //       },
-    //       {
-    //         id: 3,
-    //         configId: null,
-    //         name: "大纲故事线Agent",
-    //         key: "outlineScriptAgent",
-    //       },
-    //       {
-    //         id: 4,
-    //         configId: null,
-    //         name: "资产提示词润色",
-    //         key: "assetsPrompt",
-    //       },
-    //       {
-    //         id: 5,
-    //         configId: null,
-    //         name: "资产图片生成",
-    //         key: "assetsImage",
-    //       },
-    //       {
-    //         id: 6,
-    //         configId: null,
-    //         name: "剧本生成",
-    //         key: "generateScript",
-    //       },
-    //       {
-    //         id: 7,
-    //         configId: null,
-    //         name: "视频提示词生成",
-    //         key: "videoPrompt",
-    //       },
-    //       {
-    //         id: 8,
-    //         configId: null,
-    //         name: "图片编辑",
-    //         key: "editImage",
-    //       },
-    //     ]);
     //   },
     // },
     // {

@@ -11,14 +11,12 @@ export default router.post(
     taskClass: z.string().optional().nullable(),
     page: z.number(),
     limit: z.number(),
-    projectId: z.number(),
   }),
   async (req, res) => {
-    const { taskClass, state, page = 1, limit = 10, projectId }: any = req.body;
+    const { taskClass, state, page = 1, limit = 10 }: any = req.body;
     const offset = (page - 1) * limit;
     const data = await u
       .db("o_myTasks")
-      .where("projectId", projectId)
       .andWhere((qb) => {
         if (taskClass) {
           qb.andWhere("o_myTasks.taskClass", taskClass);
@@ -32,7 +30,6 @@ export default router.post(
       .limit(limit);
     const totalQuery = (await u
       .db("o_myTasks")
-      .where("projectId", projectId)
       .andWhere((qb) => {
         if (taskClass) {
           qb.andWhere("o_myTasks.taskClass", taskClass);

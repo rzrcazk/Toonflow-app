@@ -25,7 +25,6 @@ export default router.post(
 
     await u.db("o_project").where("id", id).delete();
     await u.db("o_novel").where("projectId", id).delete();
-    await u.db("o_storyline").where("projectId", id).delete();
     await u.db("o_outline").where("projectId", id).delete();
     await u.db("o_myTasks").where("projectId", id).delete();
 

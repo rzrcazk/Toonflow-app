@@ -1,4 +1,4 @@
-// @db-hash e58b907eede324e9949ac2ff83195026
+// @db-hash 3603ec259d5359d7117b8cdb61bf78a9
 //该文件由脚本自动生成，请勿手动修改
 
 export interface o_agentDeploy {
@@ -26,18 +26,25 @@ export interface o_assets {
 }
 export interface o_event {
   'createTime'?: number | null;
+  'detail'?: string | null;
   'id'?: number;
   'name'?: string | null;
 }
 export interface o_eventChapter {
-  'createTime'?: number | null;
+  'eventId'?: number | null;
   'id'?: number;
-  'name'?: string | null;
+  'novelId'?: number | null;
 }
 export interface o_model {
+  'apiKey'?: string | null;
+  'baseUrl'?: string | null;
+  'createTime'?: number | null;
   'id'?: number;
-  'name'?: string | null;
-  'startTime'?: number | null;
+  'index'?: number | null;
+  'manufacturer'?: string | null;
+  'model'?: string | null;
+  'modelType'?: string | null;
+  'type'?: string | null;
 }
 export interface o_myTasks {
   'describe'?: string | null;
@@ -143,6 +150,7 @@ export interface o_user {
   'id'?: number;
   'name'?: string | null;
   'password'?: string | null;
+  'tokenKey'?: string | null;
 }
 export interface o_video {
   'createTime'?: number | null;

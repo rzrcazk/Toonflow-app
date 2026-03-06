@@ -21,7 +21,7 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.unique(["id"]);
       },
       initData: async (knex) => {
-        await knex("o_user").insert([{ id: 1, name: "admin", password: "admin123",tokenKey:uuid().slice(0,8) }]);
+        await knex("o_user").insert([{ id: 1, name: "admin", password: "admin123", tokenKey: uuid().slice(0, 8) }]);
       },
     },
     //项目表
@@ -107,15 +107,21 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_model",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("startTime");
+        table.text("type");
+        table.text("model");
+        table.text("modelType");
+        table.text("apiKey");
+        table.text("baseUrl");
+        table.text("manufacturer");
+        table.integer("createTime");
+        table.integer("index");
         table.primary(["id"]);
         table.unique(["id"]);
       },
       initData: async (knex) => { },
     },
     //提示词表
-     {
+    {
       name: "o_prompts",
       builder: (table) => {
         table.integer("id").notNullable();
@@ -338,8 +344,16 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_assets",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
+        table.text("name");
+        table.text("prompt");
+        table.text("remark");
+        table.text("type");
+        table.text("describe");
+        table.text("filePath");
+        table.integer("sonId");
+        table.integer("projectId");
         table.integer("startTime");
+        table.text("state");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -395,8 +409,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_eventChapter",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.integer("eventId").unsigned().references("id").inTable("o_event");
+        table.integer("novelId").unsigned().references("id").inTable("o_novel");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -406,8 +420,9 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_outline",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.integer("episode");
+        table.text("data");
+        table.integer("projectId");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -417,8 +432,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_outlineNovel",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.integer("outlineId").unsigned().references("id").inTable("o_outline");
+        table.integer("novelId").unsigned().references("id").inTable("o_novel");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -441,8 +456,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_scriptOutline",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.integer("scriptId").unsigned().references("id").inTable("o_script");
+        table.integer("outlineId").unsigned().references("id").inTable("o_outline");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -452,8 +467,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_scriptAssets",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.integer("assetsId").unsigned().references("id").inTable("o_assets");
+        table.integer("scriptId").unsigned().references("id").inTable("o_script");
         table.primary(["id"]);
         table.unique(["id"]);
       },
@@ -474,8 +489,8 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       name: "o_storyboardScript",
       builder: (table) => {
         table.integer("id").notNullable();
-        table.string("name");
-        table.integer("createTime");
+        table.integer("storyboardId").unsigned().references("id").inTable("o_storyboard");
+        table.integer("scriptId").unsigned().references("id").inTable("o_script");
         table.primary(["id"]);
         table.unique(["id"]);
       },

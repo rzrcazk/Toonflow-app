@@ -1,4 +1,4 @@
-// @routes-hash 398a92ab5a096e1f62ef5d7e7e3c0fc7
+// @routes-hash 0bebce7df33354694c2120e4f07362dd
 import { Express } from "express";
 
 import route1 from "./routes/artStyle/getArtStyle";
@@ -35,11 +35,12 @@ import route31 from "./routes/script/addScript";
 import route32 from "./routes/script/delScript";
 import route33 from "./routes/script/getScrptApi";
 import route34 from "./routes/script/updateScript";
-import route35 from "./routes/task/getMyTaskApi";
-import route36 from "./routes/task/getTaskCategories";
-import route37 from "./routes/task/taskDetails";
-import route38 from "./routes/user/getUser";
-import route39 from "./routes/user/saveUser";
+import route35 from "./routes/setting/getTextModel";
+import route36 from "./routes/task/getMyTaskApi";
+import route37 from "./routes/task/getTaskCategories";
+import route38 from "./routes/task/taskDetails";
+import route39 from "./routes/user/getUser";
+import route40 from "./routes/user/saveUser";
 
 export default async (app: Express) => {
   app.use("/artStyle/getArtStyle", route1);
@@ -76,9 +77,10 @@ export default async (app: Express) => {
   app.use("/script/delScript", route32);
   app.use("/script/getScrptApi", route33);
   app.use("/script/updateScript", route34);
-  app.use("/task/getMyTaskApi", route35);
-  app.use("/task/getTaskCategories", route36);
-  app.use("/task/taskDetails", route37);
-  app.use("/user/getUser", route38);
-  app.use("/user/saveUser", route39);
+  app.use("/setting/getTextModel", route35);
+  app.use("/task/getMyTaskApi", route36);
+  app.use("/task/getTaskCategories", route37);
+  app.use("/task/taskDetails", route38);
+  app.use("/user/getUser", route39);
+  app.use("/user/saveUser", route40);
 }

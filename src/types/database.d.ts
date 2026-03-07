@@ -1,4 +1,4 @@
-// @db-hash 85343f3d6d433c353c463aab22bed5b1
+// @db-hash 0706c39f532f6f1a4cead1da99690e64
 //该文件由脚本自动生成，请勿手动修改
 
 export interface o_agentDeploy {
@@ -47,6 +47,16 @@ export interface o_eventChapter {
   'eventId'?: number | null;
   'id'?: number;
   'novelId'?: number | null;
+}
+export interface o_image {
+  'assetsId'?: number | null;
+  'filePath'?: string | null;
+  'id'?: number;
+  'projectId'?: number | null;
+  'scriptId'?: number | null;
+  'state'?: string | null;
+  'type'?: string | null;
+  'videoId'?: number | null;
 }
 export interface o_model {
   'apiKey'?: string | null;
@@ -195,44 +205,6 @@ export interface o_videoConfig {
   'startFrame'?: string | null;
   'updateTime'?: number | null;
 }
-export interface t_aiModelMap {
-  'configId'?: number | null;
-  'id'?: number;
-  'key'?: string | null;
-  'name'?: string | null;
-}
-export interface t_chatHistory {
-  'data'?: string | null;
-  'id'?: number;
-  'novel'?: string | null;
-  'projectId'?: number | null;
-  'type'?: string | null;
-}
-export interface t_storyline {
-  'content'?: string | null;
-  'id'?: number;
-  'name'?: string | null;
-  'novelIds'?: string | null;
-  'projectId'?: number | null;
-}
-export interface t_videoConfig {
-  'aiConfigId'?: number | null;
-  'audioEnabled'?: number | null;
-  'createTime'?: number | null;
-  'duration'?: number | null;
-  'endFrame'?: string | null;
-  'id'?: number;
-  'images'?: string | null;
-  'manufacturer'?: string | null;
-  'mode'?: string | null;
-  'projectId'?: number | null;
-  'prompt'?: string | null;
-  'resolution'?: string | null;
-  'scriptId'?: number | null;
-  'selectedResultId'?: number | null;
-  'startFrame'?: string | null;
-  'updateTime'?: number | null;
-}
 
 export interface DB {
   "o_agentDeploy": o_agentDeploy;
@@ -242,6 +214,7 @@ export interface DB {
   "o_chatHistory": o_chatHistory;
   "o_event": o_event;
   "o_eventChapter": o_eventChapter;
+  "o_image": o_image;
   "o_model": o_model;
   "o_myTasks": o_myTasks;
   "o_novel": o_novel;
@@ -261,8 +234,4 @@ export interface DB {
   "o_user": o_user;
   "o_video": o_video;
   "o_videoConfig": o_videoConfig;
-  "t_aiModelMap": t_aiModelMap;
-  "t_chatHistory": t_chatHistory;
-  "t_storyline": t_storyline;
-  "t_videoConfig": t_videoConfig;
 }

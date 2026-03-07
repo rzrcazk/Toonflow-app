@@ -616,6 +616,22 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         ]);
       },
     },
+    //生成图片表
+    {
+      name: "o_image",
+      builder: (table) => {
+        table.integer("id").notNullable();
+        table.text("filePath");
+        table.text("type");
+        table.integer("assetsId");
+        table.integer("scriptId");
+        table.integer("projectId");
+        table.integer("videoId");
+        table.text("state");
+        table.primary(["id"]);
+        table.unique(["id"]);
+      },
+    },
     // {
     //   name: "t_storyline",
     //   builder: (table) => {

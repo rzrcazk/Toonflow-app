@@ -594,6 +594,18 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             models: "[]",
             enable: 0,
           },
+          {
+            id: "qwen2api",
+            inputValues: "{}",
+            models: "[]",
+            enable: 0,
+          },
+          {
+            id: "jimeng",
+            inputValues: "{}",
+            models: "[]",
+            enable: 0,
+          },
         ]);
       },
     },

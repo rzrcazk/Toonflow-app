@@ -1,0 +1,209 @@
+# Toonflow 项目开发指南
+
+## 项目概述
+
+Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。
+
+**当前版本**: 1.1.5  
+**当前分支**: `feature/ai-animal-video`  
+**开发分支**: `develop`  
+**生产分支**: `master`（不接受直接 PR）
+
+---
+
+## 技术栈
+
+| 类别 | 技术 |
+|------|------|
+| 运行时 | Node.js 23.11.1+ |
+| 语言 | TypeScript 5.x |
+| 后端框架 | Express 5 |
+| 数据库 | SQLite (better-sqlite3 / knex) |
+| AI 集成 | Vercel AI SDK (OpenAI / Anthropic / Google / DeepSeek / 智谱 / MiniMax / 通义千问 / xAI) |
+| 本地推理 | @huggingface/transformers (ONNX) |
+| 实时通信 | Socket.IO |
+| 桌面客户端 | Electron 40 |
+| 图像处理 | Sharp |
+| 包管理器 | Yarn |
+
+---
+
+## 开发命令
+
+```bash
+# 安装依赖
+yarn install
+
+# 启动开发环境（仅后端 API）
+yarn dev
+
+# 启动 Electron 桌面客户端（后端 + GUI）
+yarn dev:gui
+
+# 生产模式启动（需先 build）
+yarn start
+
+# 编译 TypeScript
+yarn build
+
+# 代码检查
+yarn lint
+
+# 打包发布
+yarn dist          # 所有平台
+yarn dist:win      # Windows
+yarn dist:mac      # macOS
+yarn dist:linux    # Linux
+
+# AI 调试面板
+yarn debug:ai
+```
+
+---
+
+## 项目结构
+
+```
+Toonflow-app/
+├── data/                  # 运行时数据
+│   ├── models/           # 本地推理模型 (ONNX)
+│   ├── oss/              # 对象存储 (素材/角色/场景)
+│   ├── serve/            # 生产环境入口
+│   ├── skills/           # Agent 技能提示词
+│   └── web/              # 前端编译产物
+├── scripts/               # 构建与辅助脚本
+├── src/
+│   ├── agents/           # AI Agent 模块
+│   │   ├── productionAgent/   # 生产 Agent
+│   │   └── scriptAgent/       # 剧本 Agent
+│   ├── lib/              # 公共库
+│   ├── middleware/       # 中间件
+│   ├── routes/           # 路由模块 (19 个子模块)
+│   ├── socket/           # WebSocket 实时通信
+│   ├── types/            # TypeScript 类型声明
+│   ├── utils/            # 工具函数
+│   ├── app.ts            # 应用入口
+│   ├── core.ts           # 核心初始化
+│   ├── env.ts            # 环境变量处理
+│   ├── err.ts            # 错误处理
+│   ├── logger.ts         # 日志模块
+│   ├── router.ts         # 路由注册
+│   └── utils.ts          # 通用工具
+├── docs/                  # 文档资源
+├── build/                 # 编译产物
+├── package.json           # 项目配置
+├── tsconfig.json          # TypeScript 配置
+├── electron-builder.yml   # Electron 打包配置
+└── Dockerfile             # Docker 构建文件
+```
+
+---
+
+## 核心功能模块
+
+### 1. AI Agent 系统
+- **ScriptAgent**: 负责小说改编为剧本
+- **ProductionAgent**: 负责分镜、素材、视频生产
+
+### 2. 三层 Agent 协作体系
+- 决策层：任务规划与拆解
+- 执行层：内容生成
+- 监督层：质量审阅与修订反馈
+
+### 3. 主要路由模块
+- `agents/` - Agent 记忆管理
+- `script/` - 剧本生成
+- `production/` - 制作管理
+- `cornerScape/` - 分镜管理
+- `assets/` - 素材管理
+- `assetsGenerate/` - 素材生成
+- `novel/` - 小说管理
+- `project/` - 项目管理
+- `setting/` - 系统设置
+- `modelSelect/` - 模型选择
+- `login/` - 登录认证
+
+---
+
+## 开发规范
+
+### Git 工作流
+- ✅ **PR 提交到**: `develop` 分支
+- ⛔ **不接受**: 直接提交到 `master` 分支
+
+### 代码风格
+- 使用 TypeScript 严格模式
+- 遵循 ESLint 配置
+- 提交前执行 `yarn lint` 检查
+
+### 环境变量
+生产环境主要变量：
+- `NODE_ENV`: 运行环境 (prod)
+- `PORT`: 服务端口 (默认 10588)
+- `OSSURL`: 文件存储访问地址
+
+---
+
+## 测试账号
+
+首次启动默认账号：
+- **账号**: `admin`
+- **密码**: `admin123`
+
+---
+
+## 调试技巧
+
+### 后端调试
+```bash
+# 带 inspect 启动
+yarn dev
+
+# 访问 Chrome DevTools
+chrome://inspect
+```
+
+### AI 调用调试
+```bash
+# 启动 AI SDK 可视化调试工具
+yarn debug:ai
+```
+
+### 日志查看
+日志输出在控制台，使用 `logger.ts` 模块统一管理。
+
+---
+
+## 常见问题
+
+### 1. macOS 证书问题
+到 **设置 → 隐私与安全性** 配置安全性。
+
+### 2. 端口占用
+修改 `PORT` 环境变量或关闭占用 10588 端口的进程。
+
+### 3. 依赖安装失败
+确保 Node.js 版本 ≥ 23.11.1，使用 Yarn 而非 npm。
+
+---
+
+## 相关仓库
+
+| 仓库 | 说明 |
+|------|------|
+| [Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) | 完整客户端（本仓库） |
+| [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-app) | 前端源代码 |
+
+---
+
+## 联系与支持
+
+- 📧 邮箱：ltlctools@outlook.com
+- 💬 微信交流群：通过官方二维码加入
+- 🌐 Discord: https://discord.gg/HEjKmpNpAZ
+
+---
+
+## 许可证
+
+Apache-2.0 许可证，附有补充商业协议。详见 [LICENSE](./LICENSE) 文件。

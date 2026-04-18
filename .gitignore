@@ -57,3 +57,6 @@ database.d.ts
 data/oss/*
 data/test.sqlite
 version.txt
+.claw
+.sandbox-home
+.sandbox-tmp

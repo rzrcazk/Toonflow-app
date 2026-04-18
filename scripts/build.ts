@@ -1,10 +1,20 @@
 import esbuild from "esbuild";
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 
 // 打包默认使用 prod 环境变量
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = "prod";
+}
+
+// 构建前自动生成 vendor.json
+console.log("📦 生成 vendor.json...");
+try {
+  execSync("npx tsx scripts/vendor2json.ts", { stdio: "inherit" });
+} catch (err) {
+  console.error("❌ vendor.json 生成失败:", err);
+  process.exit(1);
 }
 
 const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));

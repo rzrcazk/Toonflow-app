@@ -1,7 +1,6 @@
 import express from "express";
 import { success, error } from "@/lib/responseFormat";
 import { db } from "@/utils/db";
-import initDB from "@/lib/initDB";
 
 const router = express.Router();
 
@@ -22,9 +21,6 @@ export default router.post("/", async (req, res) => {
       await db.schema.dropTableIfExists(table.name);
     }
     await db.raw("PRAGMA foreign_keys = ON");
-
-    // 重新初始化表结构
-    await initDB(db as any);
 
     // 导入数据
     await db.raw("PRAGMA foreign_keys = OFF");

@@ -3,11 +3,9 @@ import getPath from "@/utils/getPath";
 import fs from "fs";
 import path from "path";
 import knex from "knex";
-import initDB from "@/lib/initDB";
-// import fixDB from "@/lib/fixDB";
+import fixDB from "@/lib/fixDB";
 import type { DB } from "@/types/database";
 import crypto from "crypto";
-import fixDB from "@/lib/fixDB";
 
 type TableName = keyof DB & string;
 type RowType<TName extends TableName> = DB[TName];
@@ -35,7 +33,6 @@ const db = knex({
 });
 
 (async () => {
-  await initDB(db);
   await fixDB(db);
   if (process.env.NODE_ENV == "dev") initKnexType(db);
 })();

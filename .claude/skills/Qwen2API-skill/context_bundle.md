@@ -1,0 +1,1208 @@
+[35m项目结构 (全在线递归扫描)[0m
+```
+[dir] .github
+[dir] .github/workflows
+[dir] data
+[dir] docker
+[dir] docs
+[dir] docs/images
+[dir] public
+[dir] public/public
+[dir] public/src
+[dir] public/src/assets
+[dir] public/src/locales
+[dir] public/src/routes
+[dir] public/src/views
+[dir] scripts
+[dir] src
+[dir] src/config
+[dir] src/controllers
+[dir] src/middlewares
+[dir] src/models
+[dir] src/routes
+[dir] src/utils
+[file] .dockerignore
+[file] .env.example
+[file] .gitignore
+[file] README-ru.md
+[file] README.md
+[file] data/data_template.json
+[file] docker/Dockerfile
+[file] docker/docker-compose-redis.yml
+[file] docker/docker-compose.yml
+[file] ecosystem.config.js
+[file] package.json
+[file] public/.gitignore
+[file] public/index.html
+[file] public/package.json
+[file] public/postcss.config.js
+[file] public/src/App.vue
+[file] public/src/main.js
+[file] public/src/style.css
+[file] public/tailwind.config.js
+[file] public/vite.config.js
+[file] scripts/fingerprint-injector.js
+[file] src/server.js
+[file] src/start.js
+```
+
+[35m主要语言: [0mNode.js
+
+[35m关键文档内容[0m
+
+[35m文件: README-ru.md[0m
+下载失败: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1081)>
+
+------------------------------------------------------------
+
+
+[35m文件: README.md[0m
+<div align="center">
+
+> [🇷🇺 Русская версия / Russian version](README-ru.md)
+
+# 🚀 Qwen-Proxy
+
+[![Version](https://img.shields.io/badge/version-2026.04.14.09.30-blue.svg)](https://github.com/Rfym21/Qwen2API)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-supported-blue.svg)](https://hub.docker.com/r/rfym21/qwen2api)
+
+[🔗 加入交流群](https://t.me/nodejs_project) | [📖 文档](#api-文档) | [🐳 Docker 部署](#docker-部署)
+
+</div>
+
+## 🛠️ 快速开始
+
+### 项目说明
+
+Qwen-Proxy 是一个将 `https://chat.qwen.ai` 和 `Qwen Code / Qwen Cli` 转换为 OpenAI 兼容 API 的代理服务。通过本项目，您只需要一个账户，即可以使用任何支持 OpenAI API 的客户端（如 ChatGPT-Next-Web、LobeChat 等）来调用 `https://chat.qwen.ai` 和 `Qwen Code / Qwen Cli`的各种模型。其中 `/cli` 端点下的模型由 `Qwen Code / Qwen Cli` 提供，支持256k上下文，原生 tools 参数支持
+
+**主要特性：**
+- 兼容 OpenAI API 格式，无缝对接各类客户端
+- 支持多账户轮询，提高可用性
+- 支持流式/非流式响应
+- 支持多模态（图片识别、视频理解、图片/视频生成）
+- 支持 OpenAI 风格资源端点：`/v1/images/generations`、`/v1/images/edits`、`/v1/videos`
+- 支持智能搜索、深度思考等高级功能
+- 支持 CLI 端点，提供 256K 上下文和工具调用能力
+- 提供 Web 管理界面，方便配置和监控
+- 批量添加账号支持实时进度展示，可在系统设置中调整登录并发数
+
+### ⚠️ 高并发说明
+
+> **重要提示**: `chat.qwen.ai` 对单 IP 有限速策略，目前已知该限制与 Cookie 无关，仅与 IP 相关。
+
+**解决方案：**
+
+如需高并发使用，建议配合代理池实现 IP 轮换：
+
+| 方案 | 配置方式 | 说明 |
+|------|----------|------|
+| **方案一** | `PROXY_URL` + [ProxyFlow](https://github.com/Rfym21/ProxyFlow) | 直接配置代理地址，所有请求通过代理池轮换 IP |
+| **方案二** | `QWEN_CHAT_PROXY_URL` + [UrlProxy](https://github.com/Rfym21/UrlProxy) + [ProxyFlow](https://github.com/Rfym21/ProxyFlow) | 通过反代 + 代理池组合，实现更灵活的 IP 轮换 |
+
+**配置示例：**
+
+```bash
+# 方案一：直接使用代理池
+PROXY_URL=http://127.0.0.1:8282  # ProxyFlow 代理地址
+
+# 方案二：反代 + 代理池组合
+QWEN_CHAT_PROXY_URL=http://127.0.0.1:8000/qwen  # UrlProxy 反代地址（UrlProxy 配置 HTTP_PROXY 指向 ProxyFlow）
+```
+
+### 环境要求
+
+- Node.js 18+ (源码部署时需要)
+- Docker (可选)
+- Redis (可选，用于数据持久化)
+
+### ⚙️ 环境配置
+
+创建 `.env` 文件并配置以下参数：
+
+```bash
+# 🌐 服务配置
+LISTEN_ADDRESS=localhost       # 监听地址
+SERVICE_PORT=3000             # 服务端口
+
+# 🔐 安全配置
+API_KEY=sk-123456,sk-456789   # API 密钥 (必填，支持多密钥)
+ACCOUNTS=                     # 账户配置 (格式: user1:pass1,user2:pass2)
+
+# 🚀 PM2 多进程配置
+PM2_INSTANCES=1               # PM2进程数量 (1/数字/max)
+PM2_MAX_MEMORY=1G             # PM2内存限制 (100M/1G/2G等)
+                              # 注意: PM2集群模式下所有进程共用同一个端口
+
+# 🔍 功能配置
+SEARCH_INFO_MODE=table        # 搜索信息展示模式 (table/text)
+OUTPUT_THINK=true             # 是否输出思考过程 (true/false)
+SIMPLE_MODEL_MAP=false        # 简化模型映射 (true/false)
+
+# 🌐 代理与反代配置
+QWEN_CHAT_PROXY_URL=          # 自定义 Chat API 反代URL (默认: https://chat.qwen.ai)
+QWEN_CLI_PROXY_URL=           # 自定义 CLI API 反代URL (默认: https://portal.qwen.ai)
+PROXY_URL=                    # HTTP/HTTPS/SOCKS5 代理地址 (例如: http://127.0.0.1:7890)
+
+# 🗄️ 数据存储
+DATA_SAVE_MODE=none           # 数据保存模式 (none/file/redis)
+REDIS_URL=                    # Redis 连接地址 (可选，使用TLS时为rediss://)
+BATCH_LOGIN_CONCURRENCY=5     # 批量添加账号时的登录并发数
+
+# 📸 缓存配置
+CACHE_MODE=default            # 图片缓存模式 (default/file)
+```
+
+#### 📋 配置说明
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `LISTEN_ADDRESS` | 服务监听地址 | `localhost` 或 `0.0.0.0` |
+| `SERVICE_PORT` | 服务运行端口 | `3000` |
+| `API_KEY` | API 访问密钥，支持多密钥配置。第一个为管理员密钥（可访问前端管理页面），其他为普通密钥（仅可调用API）。多个密钥用逗号分隔 | `sk-admin123,sk-user456,sk-user789` |
+| `PM2_INSTANCES` | PM2进程数量 | `1`/`4`/`max` |
+| `PM2_MAX_MEMORY` | PM2内存限制 | `100M`/`1G`/`2G` |
+| `SEARCH_INFO_MODE` | 搜索结果展示格式 | `table` 或 `text` |
+| `OUTPUT_THINK` | 是否显示 AI 思考过程 | `true` 或 `false` |
+| `SIMPLE_MODEL_MAP` | 简化模型映射，只返回基础模型不包含变体 | `true` 或 `false` |
+| `QWEN_CHAT_PROXY_URL` | 自定义 Chat API 反代地址 | `https://your-proxy.com` |
+| `QWEN_CLI_PROXY_URL` | 自定义 CLI API 反代地址 | `https://your-cli-proxy.com` |
+| `PROXY_URL` | 出站请求代理地址，支持 HTTP/HTTPS/SOCKS5 | `http://127.0.0.1:7890` |
+| `DATA_SAVE_MODE` | 数据持久化方式 | `none`/`file`/`redis` |
+| `REDIS_URL` | Redis 数据库连接地址，使用TLS加密时需使用 `rediss://` 协议 | `redis://localhost:6379` 或 `rediss://xxx.upstash.io` |
+| `BATCH_LOGIN_CONCURRENCY` | 批量添加账号时的登录并发数，可在前端系统设置中动态调整 | `5` |
+| `CACHE_MODE` | 图片缓存存储方式 | `default`/`file` |
+| `LOG_LEVEL` | 日志级别 | `DEBUG`/`INFO`/`WARN`/`ERROR` |
+| `ENABLE_FILE_LOG` | 是否启用文件日志 | `true` 或 `false` |
+| `LOG_DIR` | 日志文件目录 | `./logs` |
+| `MAX_LOG_FILE_SIZE` | 最大日志文件大小(MB) | `10` |
+| `MAX_LOG_FILES` | 保留的日志文件数量 | `5` |
+
+> 💡 **提示**: 可以在 [Upstash](https://upstash.com/) 免费创建 Redis 实例，使用 TLS 协议时地址格式为 `rediss://...`
+<div>
+<img src="./docs/images/upstash.png" alt="Upstash Redis" width="600">
+</div>
+
+#### 🔑 多API_KEY配置说明
+
+`API_KEY` 环境变量支持配置多个API密钥，用于实现不同权限级别的访问控制：
+
+**配置格式:**
+```bash
+# 单个密钥（管理员权限）
+API_KEY=sk-admin123
+
+# 多个密钥（第一个为管理员，其他为普通用户）
+API_KEY=sk-admin123,sk-user456,sk-user789
+```
+
+**权限说明:**
+
+| 密钥类型 | 权限范围 | 功能描述 |
+|----------|----------|----------|
+| **管理员密钥** | 完整权限 | • 访问前端管理页面<br>• 修改系统设置<br>• 调用所有API接口<br>• 添加/删除普通密钥 |
+| **普通密钥** | API调用权限 | • 仅可调用API接口<br>• 无法访问前端管理页面<br>• 无法修改系统设置 |
+
+**使用场景:**
+- **团队协作**: 为不同团队成员分配不同权限的API密钥
+- **应用集成**: 为第三方应用提供受限的API访问权限
+- **安全隔离**: 将管理权限与普通使用权限分离
+
+**注意事项:**
+- 第一个API_KEY自动成为管理员密钥，拥有最高权限
+- 管理员可以通过前端页面动态添加或删除普通密钥
+- 所有密钥都可以正常调用API接口，权限差异仅体现在管理功能上
+
+#### 📸 CACHE_MODE 缓存模式说明
+
+`CACHE_MODE` 环境变量控制图片缓存的存储方式，用于优化图片上传和处理性能：
+
+| 模式 | 说明 | 适用场景 |
+|------|------|----------|
+| `default` | 内存缓存模式 (默认) | 单进程部署，重启后缓存丢失 |
+| `file` | 文件缓存模式 | 多进程部署，缓存持久化到 `./caches/` 目录 |
+
+**推荐配置:**
+- **单进程部署**: 使用 `CACHE_MODE=default`，性能最佳
+- **多进程/集群部署**: 使用 `CACHE_MODE=file`，确保进程间缓存共享
+- **Docker 部署**: 建议使用 `CACHE_MODE=file` 并挂载 `./caches` 目录
+
+**文件缓存目录结构:**
+```
+caches/
+├── [signature1].txt    # 缓存文件，包含图片URL
+├── [signature2].txt
+└── ...
+```
+
+---
+
+## 🚀 部署方式
+
+### 🐳 Docker 部署
+
+#### 方式一：直接运行
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e API_KEY=sk-admin123,sk-user456,sk-user789 \
+  -e DATA_SAVE_MODE=none \
+  -e CACHE_MODE=file \
+  -e ACCOUNTS= \
+  -v ./caches:/app/caches \
+  --name qwen2api \
+  rfym21/qwen2api:latest
+```
+
+#### 方式二：Docker Compose
+
+```bash
+# 下载配置文件
+curl -o docker-compose.yml https://raw.githubusercontent.com/Rfym21/Qwen2API/refs/heads/main/docker/docker-compose.yml
+
+# 启动服务
+docker compose pull && docker compose up -d
+```
+
+### 📦 本地部署
+
+```bash
+# 克隆项目
+git clone https://github.com/Rfym21/Qwen2API.git
+cd Qwen2API
+
+# 安装依赖
+npm install
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件
+
+# 智能启动 (推荐 - 自动判断单进程/多进程)
+npm start
+
+# 开发模式
+npm run dev
+```
+
+### 🚀 PM2 多进程部署
+
+使用 PM2 进行生产环境多进程部署，提供更好的性能和稳定性。
+
+**重要说明**: PM2 集群模式下，所有进程共用同一个端口，PM2 会自动进行负载均衡。
+
+### 🤖 智能启动模式
+
+使用 `npm start` 可以自动判断启动方式：
+
+- 当 `PM2_INSTANCES=1` 时，使用单进程模式
+- 当 `PM2_INSTANCES>1` 时，使用 Node.js 集群模式
+- 自动限制进程数不超过 CPU 核心数
+
+### ☁️ Hugging Face 部署
+
+快速部署到 Hugging Face Spaces：
+
+[![Deploy to Hugging Face](https://img.shields.io/badge/🤗%20Hugging%20Face-Deploy-yellow)](https://huggingface.co/spaces/devme/q2waepnilm)
+
+<div>
+<img src="./docs/images/hf.png" alt="Hugging Face Deployment" width="600">
+</div>
+
+---
+
+## 📁 项目结构
+
+```
+Qwen2API/
+├── README.md
+├── ecosystem.config.js              # PM2配置文件
+├── package.json
+│
+├── docker/                          # Docker配置目录
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── docker-compose-redis.yml
+│
+├── caches/                          # 缓存文件目录
+├── data/                            # 数据文件目录
+│   ├── data.json
+│   └── data_template.json
+├── scripts/                         # 脚本目录
+│   └── fingerprint-injector.js      # 浏览器指纹注入脚本
+│
+├── src/                             # 后端源代码目录
+│   ├── server.js                    # 主服务器文件
+│   ├── start.js                     # 智能启动脚本 (自动判断单进程/多进程)
+│   ├── config/
+│   │   └── index.js                 # 配置文件
+│   ├── controllers/                 # 控制器目录
+│   │   ├── chat.js                  # 聊天控制器
+│   │   ├── chat.image.video.js      # 图片/视频生成控制器
+│   │   ├── cli.chat.js              # CLI聊天控制器
+│   │   └── models.js                # 模型控制器
+│   ├── middlewares/                 # 中间件目录
+│   │   ├── authorization.js         # 授权中间件
+│   │   └── chat-middleware.js       # 聊天中间件
+│   ├── models/                      # 模型目录
+│   │   └── models-map.js            # 模型映射配置
+│   ├── routes/                      # 路由目录
+│   │   ├── accounts.js              # 账户路由
+│   │   ├── chat.js                  # 聊天路由
+│   │   ├── cli.chat.js              # CLI聊天路由
+│   │   ├── models.js                # 模型路由
+│   │   ├── settings.js              # 设置路由
+│   │   └── verify.js                # 验证路由
+│   └── utils/                       # 工具函数目录
+│       ├── account-rotator.js       # 账户轮询器
+│       ├── account.js               # 账户管理
+│       ├── chat-helpers.js          # 聊天辅助函数
+│       ├── cli.manager.js           # CLI管理器
+│       ├── cookie-generator.js      # Cookie生成器
+│       ├── data-persistence.js      # 数据持久化
+│       ├── fingerprint.js           # 浏览器指纹生成
+│       ├── img-caches.js            # 图片缓存
+│       ├── logger.js                # 日志工具
+│       ├── precise-tokenizer.js     # 精确分词器
+│       ├── proxy-helper.js          # 代理辅助函数
+│       ├── redis.js                 # Redis连接
+│       ├── request.js               # HTTP请求封装
+│       ├── setting.js               # 设置管理
+│       ├── ssxmod-manager.js        # ssxmod参数管理
+│       ├── token-manager.js         # Token管理器
+│       ├── tools.js                 # 工具调用处理
+│       └── upload.js                # 文件上传
+│
+└── public/                          # 前端项目目录
+    ├── dist/                        # 编译后的前端文件
+    │   ├── assets/                  # 静态资源
+    │   ├── favicon.png
+    │   └── index.html
+    ├── src/                         # 前端源代码
+    │   ├── App.vue                  # 主应用组件
+    │   ├── main.js                  # 入口文件
+    │   ├── style.css                # 全局样式
+    │   ├── assets/                  # 静态资源
+    │   │   └── background.mp4
+    │   ├── routes/                  # 路由配置
+    │   │   └── index.js
+    │   └── views/                   # 页面组件
+    │       ├── auth.vue             # 认证页面
+    │       ├── dashboard.vue        # 仪表板页面
+    │       └── settings.vue         # 设置页面
+    ├── package.json                 # 前端依赖配置
+    ├── package-lock.json
+    ├── index.html                   # 前端入口HTML
+    ├── postcss.config.js            # PostCSS配置
+    ├── tailwind.config.js           # TailwindCSS配置
+    ├── vite.config.js               # Vite构建配置
+    └── public/                      # 公共静态资源
+        └── favicon.png
+```
+
+## 📖 API 文档
+
+### 🔐 API 认证说明
+
+本API支持多密钥认证机制，所有API请求都需要在请求头中包含有效的API密钥：
+
+```http
+Authorization: Bearer sk-your-api-key
+```
+
+**支持的密钥类型:**
+- **管理员密钥**: 第一个配置的API_KEY，拥有完整权限
+- **普通密钥**: 其他配置的API_KEY，仅可调用API接口
+
+**认证示例:**
+```bash
+# 使用管理员密钥
+curl -H "Authorization: Bearer sk-admin123" http://localhost:3000/v1/models
+
+# 使用普通密钥
+curl -H "Authorization: Bearer sk-user456" http://localhost:3000/v1/chat/completions
+```
+
+### 🔍 获取模型列表
+
+获取所有可用的 AI 模型列表。
+
+```http
+GET /v1/models
+Authorization: Bearer sk-your-api-key
+```
+
+```http
+GET /models (免认证)
+```
+
+**说明:**
+- `id`: 推荐直接作为请求里的 `model` 使用，优先展示更易读的模型名称
+- `name`: 上游原始模型 ID，便于与官方接口或日志对照
+- `upstream_id`: 不带能力后缀的上游模型 ID
+- `display_name`: 不带能力后缀的展示名
+- 当 `SIMPLE_MODEL_MAP=false` 时，会额外返回 `-thinking`、`-search`、`-image`、`-video`、`-image-edit` 等能力变体
+
+**响应示例:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "Qwen3-Omni-Flash-image",
+      "name": "qwen3-omni-flash-2025-12-01-image",
+      "upstream_id": "qwen3-omni-flash-2025-12-01",
+      "display_name": "Qwen3-Omni-Flash",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "qwen"
+    }
+  ]
+}
+```
+
+### 💬 聊天对话
+
+发送聊天消息并获取 AI 回复。
+
+```http
+POST /v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer sk-your-api-key
+```
+
+**请求体:**
+```json
+{
+  "model": "Qwen3.6-Plus",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是一个有用的助手。"
+    },
+    {
+      "role": "user",
+      "content": "你好，请介绍一下自己。"
+    }
+  ],
+  "stream": false,
+  "temperature": 0.7,
+  "max_tokens": 2000
+}
+```
+
+**响应示例:**
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "qwen3.6-plus",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "你好！我是一个AI助手..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 50,
+    "total_tokens": 70
+  }
+}
+```
+
+### 🎨 图像与视频生成
+
+当前支持两种调用方式：
+- 使用 `/v1/chat/completions` + 模型后缀：`-image`、`-image-edit`、`-video`
+- 使用 OpenAI 风格资源端点：`/v1/images/generations`、`/v1/images/edits`、`/v1/videos`
+
+以下示例中的模型名请以 `/v1/models` 返回的 `id` 字段为准。
+
+#### 方式一：通过 `/v1/chat/completions`
+
+文本生图：
+
+```json
+{
+  "model": "Qwen3-Omni-Flash-image",
+  "messages": [
+    {
+      "role": "user",
+      "content": "画一只在花园里玩耍的小猫咪，卡通风格"
+    }
+  ],
+  "size": "1:1",
+  "stream": false
+}
+```
+
+图片编辑：
+
+```json
+{
+  "model": "Qwen3-Omni-Flash-image-edit",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "把这张图片改成浅蓝色科技风海报"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/png;base64,..."
+          }
+        }
+      ]
+    }
+  ],
+  "stream": false
+}
+```
+
+视频生成：
+
+```json
+{
+  "model": "Qwen3-Omni-Flash-video",
+  "messages": [
+    {
+      "role": "user",
+      "content": "生成一个 3 秒夜景延时视频，城市街道霓虹灯闪烁"
+    }
+  ],
+  "size": "9:16",
+  "stream": false
+}
+```
+
+**支持的尺寸参数:**
+- `/v1/chat/completions` 下的图片/视频生成支持 `1:1`、`4:3`、`3:4`、`16:9`、`9:16`
+- `/v1/images/generations`、`/v1/images/edits`、`/v1/videos` 兼容 `1024x1024`、`1536x1024`、`1024x1536`、`1792x1024`、`1024x1792`
+
+#### 方式二：OpenAI 风格资源端点
+
+图像生成：
+
+```http
+POST /v1/images/generations
+Content-Type: application/json
+Authorization: Bearer sk-your-api-key
+```
+
+```json
+{
+  "model": "Qwen3-Omni-Flash",
+  "prompt": "一只橘猫坐在木桌上看向镜头，写实风格",
+  "size": "1024x1024",
+  "response_format": "url"
+}
+```
+
+图像编辑：
+
+```http
+POST /v1/images/edits
+Content-Type: multipart/form-data
+Authorization: Bearer sk-your-api-key
+```
+
+表单字段：
+- `model`: 可选，不传时自动选择支持图片编辑的默认模型
+- `prompt`: 可选，默认为 `请基于上传图片完成编辑`
+- `image`: 必填，支持 multipart 文件上传，也支持 JSON 字符串形式的图片 URL / data URI
+- `size`: 可选，支持 OpenAI 风格尺寸写法
+- `response_format`: 可选，支持 `url`、`b64_json`
+
+视频生成：
+
+```http
+POST /v1/videos
+Content-Type: application/json
+Authorization: Bearer sk-your-api-key
+```
+
+```json
+{
+  "model": "Qwen3-Omni-Flash",
+  "prompt": "一个简短的 3 秒夜景延时视频，城市街道霓虹灯闪烁",
+  "size": "1024x1792"
+}
+```
+
+图像生成响应示例：
+
+```json
+{
+  "created": 1776126402,
+  "data": [
+    {
+      "url": "https://cdn.qwenlm.ai/output/example/generated-image.png"
+    }
+  ]
+}
+```
+
+视频生成响应示例：
+
+```json
+{
+  "id": "video_1776126509490",
+  "object": "video",
+  "created": 1776126509,
+  "model": "qwen3-omni-flash-2025-12-01",
+  "status": "completed",
+  "data": [
+    {
+      "url": "https://cdn.qwenlm.ai/output/example/generated-video.mp4"
+    }
+  ]
+}
+```
+
+### 🎯 高级功能
+
+#### 🔍 智能搜索模式
+
+在模型名称后添加 `-search` 后缀启用搜索功能：
+
+```json
+{
+  "model": "Qwen3.6-Plus-search",
+  "messages": [...]
+}
+```
+
+#### 🧠 推理模式
+
+在模型名称后添加 `-thinking` 后缀启用思考过程输出：
+
+```json
+{
+  "model": "Qwen3.6-Plus-thinking",
+  "messages": [...]
+}
+```
+
+#### 🔍🧠 组合模式
+
+同时启用搜索和推理功能：
+
+```json
+{
+  "model": "Qwen3.6-Plus-thinking-search",
+  "messages": [...]
+}
+```
+
+#### 🖼️ 多模态支持
+
+API 自动处理图片和视频上传，支持在对话中发送图片、视频 URL 或 Base64 data URI。
+
+图片理解示例：
+
+```json
+{
+  "model": "Qwen3.5-Omni-Plus",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "这张图片里有什么？"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/jpeg;base64,..."
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+视频理解示例：
+
+```json
+{
+  "model": "Qwen3.5-Omni-Plus",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "请用一句话描述这个视频"
+        },
+        {
+          "type": "input_video",
+          "input_video": {
+            "url": "data:video/mp4;base64,..."
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+支持的视频字段：
+- `input_video`
+- `video_url`
+- `video`
+
+### 🖥️ CLI 端点
+
+CLI 端点使用 Qwen Code / Qwen Cli 的 OAuth 令牌访问，支持 256K 上下文和工具调用（Function Calling）。
+
+**支持的模型：**
+
+| 模型 ID | 说明 |
+|---------|------|
+| `qwen3-coder-plus` | Qwen3 Coder Plus |
+| `qwen3-coder-flash` | Qwen3 Coder Flash（速度更快） |
+| `coder-model` | Qwen 3.5 Plus（带思维链，256K 上下文） |
+| `qwen3.5-plus` | `coder-model` 的别名，自动重定向 |
+
+#### 💬 CLI 聊天对话
+
+通过 CLI 端点发送聊天请求，支持流式和非流式响应。
+
+```http
+POST /cli/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer API_KEY
+```
+
+**请求体:**
+```json
+{
+  "model": "qwen3-coder-plus",
+  "messages": [
+    {
+      "role": "user",
+      "content": "你好，请介绍一下自己。"
+    }
+  ],
+  "stream": false,
+  "temperature": 0.7,
+  "max_tokens": 2000
+}
+```
+
+使用 `coder-model`（即 Qwen 3.5 Plus）或其别名 `qwen3.5-plus`：
+```json
+{
+  "model": "coder-model",
+  "messages": [
+    {
+      "role": "user",
+      "content": "写一个快速排序算法。"
+    }
+  ],
+  "stream": false
+}
+```
+
+**流式请求:**
+```json
+{
+  "model": "qwen3-coder-flash",
+  "messages": [
+    {
+      "role": "user",
+      "content": "写一首关于春天的诗。"
+    }
+  ],
+  "stream": true
+}
+```
+
+**响应格式:**
+
+非流式响应与标准 OpenAI API 格式相同：
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "qwen3-coder-plus",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "你好！我是一个AI助手..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 50,
+    "total_tokens": 70
+  }
+}
+```
+
+流式响应使用 Server-Sent Events (SSE) 格式：
+```
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"qwen3-coder-flash","choices":[{"index":0,"delta":{"content":"你好"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"qwen3-coder-flash","choices":[{"index":0,"delta":{"content":"！"},"finish_reason":null}]}
+
+data: [DONE]
+```
+
+
+------------------------------------------------------------
+
+
+[35m核心代码预览 (Top 100 Lines)[0m
+
+[35m文件: public/postcss.config.js[0m
+```js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+
+[35m文件: public/tailwind.config.js[0m
+```js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{vue,js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+
+[35m文件: public/vite.config.js[0m
+```js
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [vue()],
+  server: {
+    proxy: {
+      '/': {
+        target: 'http://localhost:4000', // 实际后端地址
+        changeOrigin: true,
+      }
+    }
+  }
+})
+```
+
+
+[35m文件: scripts/fingerprint-injector.js[0m
+```js
+(function() {
+    // 拦截 String.prototype.charAt
+    const originalCharAt = String.prototype.charAt;
+    let capturedData = null;
+
+    String.prototype.charAt = function(index) {
+        if (this.length > 200 && this.includes('^') && !capturedData) {
+            const fields = this.split('^');
+            if (fields.length === 37) {
+                capturedData = this.toString();
+                console.log('\n=== 检测到浏览器指纹 ===');
+                console.log(capturedData);
+
+                // 恢复原方法
+                String.prototype.charAt = originalCharAt;
+            }
+        }
+        return originalCharAt.call(this, index);
+    };
+})();
+```
+
+
+[35m文件: src/start.js[0m
+```js
+const cluster = require('cluster')
+const os = require('os')
+const { logger } = require('./utils/logger')
+
+// 加载环境变量
+require('dotenv').config()
+
+// 获取CPU核心数
+const cpuCores = os.cpus().length
+
+// 获取环境变量配置
+const PM2_INSTANCES = process.env.PM2_INSTANCES || '1'
+const SERVICE_PORT = process.env.SERVICE_PORT || 3000
+const NODE_ENV = process.env.NODE_ENV || 'production'
+
+// 解析进程数
+let instances
+if (PM2_INSTANCES === 'max') {
+  instances = cpuCores
+} else if (!isNaN(PM2_INSTANCES)) {
+  instances = parseInt(PM2_INSTANCES)
+} else {
+  instances = 1
+}
+
+// 限制进程数不能超过CPU核心数
+if (instances > cpuCores) {
+  logger.warn(`配置的进程数(${instances})超过CPU核心数(${cpuCores})，自动调整为${cpuCores}`, 'AUTO')
+  instances = cpuCores
+}
+
+logger.info('🚀 Qwen2API 智能启动', 'AUTO')
+logger.info(`CPU核心数: ${cpuCores}`, 'AUTO')
+logger.info(`配置的进程数: ${PM2_INSTANCES}`, 'AUTO')
+logger.info(`实际启动进程数: ${instances}`, 'AUTO')
+logger.info(`服务端口: ${SERVICE_PORT}`, 'AUTO')
+
+// 智能判断启动方式
+if (instances === 1) {
+  logger.info('📦 使用单进程模式启动', 'AUTO')
+  // 直接启动服务器
+  require('./server.js')
+} else {
+  // 检查是否通过PM2启动
+  if (process.env.PM2_USAGE || process.env.pm_id !== undefined) {
+    logger.info(`PM2进程启动 - 进程ID: ${process.pid}, 工作进程ID: ${process.env.pm_id || 'unknown'}`, 'PM2')
+    require('./server.js')
+  } else if (cluster.isMaster) {
+    logger.info(`🔥 使用Node.js集群模式启动 (${instances}个进程)`, 'AUTO')
+
+    logger.info(`启动主进程 - PID: ${process.pid}`, 'CLUSTER')
+    logger.info(`运行环境: ${NODE_ENV}`, 'CLUSTER')
+
+    // 创建工作进程
+    for (let i = 0; i < instances; i++) {
+      const worker = cluster.fork()
+      logger.info(`启动工作进程 ${i + 1}/${instances} - PID: ${worker.process.pid}`, 'CLUSTER')
+    }
+
+    // 监听工作进程退出
+    cluster.on('exit', (worker, code, signal) => {
+      logger.error(`工作进程 ${worker.process.pid} 已退出 - 退出码: ${code}, 信号: ${signal}`, 'CLUSTER')
+
+      // 自动重启工作进程
+      if (!worker.exitedAfterDisconnect) {
+        logger.info('正在重启工作进程...', 'CLUSTER')
+        const newWorker = cluster.fork()
+        logger.info(`新工作进程已启动 - PID: ${newWorker.process.pid}`, 'CLUSTER')
+      }
+    })
+
+    // 监听工作进程在线
+    cluster.on('online', (worker) => {
+      logger.info(`工作进程 ${worker.process.pid} 已上线`, 'CLUSTER')
+    })
+
+    // 监听工作进程断开连接
+    cluster.on('disconnect', (worker) => {
+      logger.warn(`工作进程 ${worker.process.pid} 已断开连接`, 'CLUSTER')
+    })
+
+    // 优雅关闭处理
+    process.on('SIGTERM', () => {
+      logger.info('收到SIGTERM信号，正在优雅关闭...', 'CLUSTER')
+      cluster.disconnect(() => {
+        process.exit(0)
+      })
+    })
+
+    process.on('SIGINT', () => {
+      logger.info('收到SIGINT信号，正在优雅关闭...', 'CLUSTER')
+      cluster.disconnect(() => {
+        process.exit(0)
+      })
+    })
+
+  } else {
+    // 工作进程逻辑
+    logger.info(`工作进程启动 - PID: ${process.pid}`, 'WORKER')
+    require('./server.js')
+```
+
+
+[35m入口文件预览 (Top 100 Lines)[0m
+
+[35m文件: src/server.js[0m
+```js
+const express = require('express')
+const bodyParser = require('body-parser')
+const config = require('./config/index.js')
+const cors = require('cors')
+const { logger } = require('./utils/logger')
+const { initSsxmodManager } = require('./utils/ssxmod-manager')
+const app = express()
+const path = require('path')
+const fs = require('fs')
+const modelsRouter = require('./routes/models.js')
+const chatRouter = require('./routes/chat.js')
+const cliChatRouter = require('./routes/cli.chat.js')
+const verifyRouter = require('./routes/verify.js')
+const accountsRouter = require('./routes/accounts.js')
+const settingsRouter = require('./routes/settings.js')
+
+if (config.dataSaveMode === 'file') {
+  if (!fs.existsSync(path.join(__dirname, '../data/data.json'))) {
+    fs.writeFileSync(path.join(__dirname, '../data/data.json'), JSON.stringify({"accounts": [] }, null, 2))
+  }
+}
+
+// 初始化 SSXMOD Cookie 管理器
+initSsxmodManager()
+
+app.use(bodyParser.json({ limit: '128mb' }))
+app.use(bodyParser.urlencoded({ limit: '128mb', extended: true }))
+app.use(cors())
+
+// API路由
+app.use(modelsRouter)
+app.use(chatRouter)
+app.use(cliChatRouter)
+app.use(verifyRouter)
+app.use('/api', accountsRouter)
+app.use('/api', settingsRouter)
+
+app.use(express.static(path.join(__dirname, '../public/dist')))
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/dist/index.html'), (err) => {
+    if (err) {
+      logger.error('管理页面加载失败', 'SERVER', '', err)
+      res.status(500).send('服务器内部错误')
+    }
+  })
+})
+
+// 处理错误中间件（必须放在所有路由之后）
+app.use((err, req, res, next) => {
+  logger.error('服务器内部错误', 'SERVER', '', err)
+  res.status(500).send('服务器内部错误')
+})
+
+
+// 服务器启动信息
+const serverInfo = {
+  address: config.listenAddress || 'localhost',
+  port: config.listenPort,
+  outThink: config.outThink ? '开启' : '关闭',
+  searchInfoMode: config.searchInfoMode === 'table' ? '表格' : '文本',
+  dataSaveMode: config.dataSaveMode,
+  logLevel: config.logLevel,
+  enableFileLog: config.enableFileLog
+}
+
+if (config.listenAddress) {
+  app.listen(config.listenPort, config.listenAddress, () => {
+    logger.server('服务器启动成功', 'SERVER', serverInfo)
+    logger.info('开源地址: https://github.com/Rfym21/Qwen2API', 'INFO')
+    logger.info('电报群聊: https://t.me/nodejs_project', 'INFO')
+  })
+} else {
+  app.listen(config.listenPort, () => {
+    logger.server('服务器启动成功', 'SERVER', serverInfo)
+    logger.info('开源地址: https://github.com/Rfym21/Qwen2API', 'INFO')
+    logger.info('电报群聊: https://t.me/nodejs_project', 'INFO')
+  })
+}
+```
+
+
+[35m文件: public/src/main.js[0m
+```js
+import { createApp } from 'vue'
+import { createI18n } from 'vue-i18n'
+import router from './routes/index.js'
+import App from './App.vue'
+import ru from './locales/ru.json'
+import zh from './locales/zh.json'
+import "./style.css"
+
+const i18n = createI18n({
+  locale: localStorage.getItem('locale') || 'zh',
+  fallbackLocale: 'ru',
+  messages: { ru, zh },
+  globalInjection: true
+})
+
+createApp(App)
+  .use(i18n)
+  .use(router)
+  .mount('#app')
+```
+
+
+[35m依赖项详情[0m
+
+[35mpackage.json[0m
+```
+{
+  "name": "qwen2api",
+  "version": "2026.04.14.09.30",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/start.js",
+    "dev": "nodemon src/server.js",
+    "pm2": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop qwen2api",
+    "pm2:restart": "pm2 restart qwen2api",
+    "pm2:reload": "pm2 reload qwen2api",
+    "pm2:delete": "pm2 delete qwen2api",
+    "pm2:logs": "pm2 logs qwen2api",
+    "pm2:status": "pm2 status",
+    "pm2:monit": "pm2 monit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "ali-oss": "^6.22.0",
+    "axios": "^1.11.0",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "form-data": "^4.0.2",
+    "https-proxy-agent": "^7.0.6",
+    "ioredis": "^5.6.1",
+    "jwt-decode": "^4.0.0",
+    "mime-types": "^3.0.1",
+    "multer": "^1.4.5-lts.1",
+    "pm2": "^6.0.8",
+    "tiktoken": "^1.0.21"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
+
+```

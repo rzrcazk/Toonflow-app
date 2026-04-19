@@ -18,7 +18,7 @@ Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动
 | 运行时 | Node.js 23.11.1+ |
 | 语言 | TypeScript 5.x |
 | 后端框架 | Express 5 |
-| 数据库 | SQLite (better-sqlite3 / knex) |
+| 数据库 | SQLite / PostgreSQL (knex) |
 | AI 集成 | Vercel AI SDK (OpenAI / Anthropic / Google / DeepSeek / 智谱 / MiniMax / 通义千问 / xAI) |
 | 本地推理 | @huggingface/transformers (ONNX) |
 | 实时通信 | Socket.IO |
@@ -137,10 +137,34 @@ Toonflow-app/
 - 提交前执行 `yarn lint` 检查
 
 ### 环境变量
-生产环境主要变量：
-- `NODE_ENV`: 运行环境 (prod)
+
+**基本配置**：
+- `NODE_ENV`: 运行环境 (dev | prod)
 - `PORT`: 服务端口 (默认 10588)
 - `OSSURL`: 文件存储访问地址
+
+**数据库配置**：
+```bash
+# 数据库类型：sqlite 或 pg
+DB_TYPE=sqlite
+
+# PostgreSQL 配置（当 DB_TYPE=pg 时）
+PG_HOST=localhost
+PG_PORT=5432
+PG_DATABASE=toonflow
+PG_USER=postgres
+PG_PASSWORD=postgres
+```
+
+**AI API Key**：
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GOOGLE_API_KEY`
+- `DEEPSEEK_API_KEY`
+- `ZHIPU_API_KEY`
+- `MINIMAX_API_KEY`
+- `QWEN_API_KEY`
+- `XAI_API_KEY`
 
 ---
 
@@ -184,6 +208,17 @@ yarn debug:ai
 
 ### 3. 依赖安装失败
 确保 Node.js 版本 ≥ 23.11.1，使用 Yarn 而非 npm。
+
+### 4. PostgreSQL 数据库配置
+1. 安装 PostgreSQL 14+
+2. 创建数据库：`CREATE DATABASE toonflow;`
+3. 设置 `.env` 文件中的 `DB_TYPE=pg` 和 PG_* 相关配置
+4. 首次启动时会自动创建表结构
+
+### 5. SQLite 与 PostgreSQL 切换
+- 默认使用 SQLite（`DB_TYPE=sqlite`）
+- 切换到 PostgreSQL：设置 `DB_TYPE=pg` 并配置连接参数
+- 两种模式不能同时使用，数据需要迁移
 
 ---
 

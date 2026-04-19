@@ -1,4 +1,5 @@
 // import "./logger";
+import "dotenv/config";
 import "./err";
 import "./env";
 import express, { Request, Response, NextFunction } from "express";

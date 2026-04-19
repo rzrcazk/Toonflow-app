@@ -137,7 +137,7 @@ const vendor: VendorConfig = {
   version: "2.1",
   author: "Toonflow",
   name: "MiniMax(海螺AI)",
-  description: "MiniMax官方接口适配，支持M系列推理文本模型、文生图/图生图、视频生成（文生视频、图生视频、首尾帧生成）能力 \n [前往平台](https://minimaxi.com/)",
+  description: "MiniMax 官方接口适配，支持 M 系列推理文本模型能力 \n [前往平台](https://minimaxi.com/)",
   inputs: [
     { key: "apiKey", label: "API密钥", type: "password", required: true },
     { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "示例：https://api.minimaxi.com" },
@@ -146,49 +146,6 @@ const vendor: VendorConfig = {
   models: [
     // 文本模型
     { name: "MiniMax-M2.7 (推理版)", modelName: "MiniMax-M2.7", type: "text", think: true },
-    { name: "MiniMax-M2.7 极速版 (推理版)", modelName: "MiniMax-M2.7-highspeed", type: "text", think: true },
-    { name: "MiniMax-M2.5 (推理版)", modelName: "MiniMax-M2.5", type: "text", think: true },
-    { name: "MiniMax-M2.5 极速版 (推理版)", modelName: "MiniMax-M2.5-highspeed", type: "text", think: true },
-    { name: "MiniMax-M2.1 (编程版)", modelName: "MiniMax-M2.1", type: "text", think: true },
-    { name: "MiniMax-M2.1 极速版 (编程版)", modelName: "MiniMax-M2.1-highspeed", type: "text", think: true },
-    { name: "MiniMax-M2 (Agent版)", modelName: "MiniMax-M2", type: "text", think: false },
-    // 图片模型
-    { name: "海螺图像V1", modelName: "image-01", type: "image", mode: ["text", "singleImage"] },
-    { name: "海螺图像V1 Live版", modelName: "image-01-live", type: "image", mode: ["text", "singleImage"], associationSkills: "支持自定义画风" },
-    // 视频模型
-    {
-      name: "海螺2.3",
-      modelName: "MiniMax-Hailuo-2.3",
-      type: "video",
-      mode: ["text", "singleImage"],
-      audio: false,
-      durationResolutionMap: [
-        { duration: [6], resolution: ["768P", "1080P"] },
-        { duration: [10], resolution: ["768P"] },
-      ],
-    },
-    {
-      name: "海螺2.3极速版",
-      modelName: "MiniMax-Hailuo-2.3-Fast",
-      type: "video",
-      mode: ["text", "singleImage"],
-      audio: false,
-      durationResolutionMap: [
-        { duration: [6], resolution: ["768P", "1080P"] },
-        { duration: [10], resolution: ["768P"] },
-      ],
-    },
-    {
-      name: "海螺02",
-      modelName: "MiniMax-Hailuo-02",
-      type: "video",
-      mode: ["text", "singleImage", "startEndRequired"],
-      audio: false,
-      durationResolutionMap: [
-        { duration: [6], resolution: ["512P", "768P", "1080P"] },
-        { duration: [10], resolution: ["512P", "768P"] },
-      ],
-    },
   ],
 };
 

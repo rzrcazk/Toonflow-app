@@ -1,3 +1,5 @@
+/* eslint-disable */
+// @ts-nocheck
 /**
  * Toonflow AI 供应商模板 - 通义千问视频生成 (Qwen2API-Video)
  * @version 1.0

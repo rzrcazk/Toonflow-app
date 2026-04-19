@@ -38,6 +38,7 @@ interface VideoModel {
   associationSkills?: string;
   audio: "optional" | false | true;
   durationResolutionMap: { duration: number[]; resolution: string[] }[];
+  size?: "720p" | "1080p"; // 视频分辨率选项
 }
 
 interface TTSModel {
@@ -150,6 +151,7 @@ const vendor: VendorConfig = {
       type: "video",
       mode: ["text", "singleImage", "startEndRequired"],
       audio: false,
+      size: "720p",
       durationResolutionMap: [
         { duration: [5], resolution: ["720p"] },
       ],
@@ -213,6 +215,18 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const headers = getHeaders();
   const chatID = generateChatID();
 
+  // ============ 调试日志：打印请求配置 ============
+  logger(`[Qwen2API-Video DEBUG] ============ 开始视频生成请求 ============`);
+  logger(`[Qwen2API-Video DEBUG] 模型：${model.modelName}`);
+  logger(`[Qwen2API-Video DEBUG] Prompt: ${config.prompt}`);
+  logger(`[Qwen2API-Video DEBUG] 时长：${config.duration}s`);
+  logger(`[Qwen2API-Video DEBUG] 分辨率：${config.resolution}`);
+  logger(`[Qwen2API-Video DEBUG] 宽高比：${config.aspectRatio}`);
+  logger(`[Qwen2API-Video DEBUG] Mode: ${JSON.stringify(config.mode)}`);
+  logger(`[Qwen2API-Video DEBUG] referenceList 长度：${config.referenceList?.length || 0}`);
+  logger(`[Qwen2API-Video DEBUG] baseUrl: ${baseUrl}`);
+  logger(`[Qwen2API-Video DEBUG] chatID: ${chatID}`);
+
   // 构造请求体
   const reqBody: any = {
     stream: false,
@@ -236,13 +250,16 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
   // 处理参考资源
   const imageRefs = config.referenceList?.filter((r) => r.type === "image") || [];
+  logger(`[Qwen2API-Video DEBUG] imageRefs 数量：${imageRefs.length}`);
   if (imageRefs.length > 0) {
     if (config.mode.includes("singleImage") && imageRefs.length >= 1) {
+      logger(`[Qwen2API-Video DEBUG] 添加单图参考，base64 长度：${imageRefs[0].base64.length}`);
       reqBody.messages[0].files.push({
         type: "image",
         url: imageRefs[0].base64,
       });
     } else if (config.mode.includes("startEndRequired") && imageRefs.length >= 2) {
+      logger(`[Qwen2API-Video DEBUG] 添加首尾帧参考，base64 长度：${imageRefs[0].base64.length}, ${imageRefs[1].base64.length}`);
       reqBody.messages[0].files.push(
         { type: "image", url: imageRefs[0].base64 },
         { type: "image", url: imageRefs[1].base64 }
@@ -250,10 +267,19 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
     }
   }
 
-  logger(`开始提交 Qwen2API-Video 视频生成任务，模型：${model.modelName}，时长：${config.duration}s，分辨率：${config.resolution}`);
+  logger(`[Qwen2API-Video DEBUG] ============ 请求 URL ============`);
+  logger(`[Qwen2API-Video DEBUG] POST ${baseUrl}/api/v2/chat/completions?chat_id=${chatID}`);
+  logger(`[Qwen2API-Video DEBUG] ============ 请求 Headers ============`);
+  logger(`[Qwen2API-Video DEBUG] ${JSON.stringify(headers, null, 2)}`);
+  logger(`[Qwen2API-Video DEBUG] ============ 请求 Body ============`);
+  logger(`[Qwen2API-Video DEBUG] ${JSON.stringify(reqBody, null, 2)}`);
 
   try {
     const submitResp = await axios.post(`${baseUrl}/api/v2/chat/completions?chat_id=${chatID}`, reqBody, { headers });
+
+    logger(`[Qwen2API-Video DEBUG] ============ 响应状态码：${submitResp.status} ============`);
+    logger(`[Qwen2API-Video DEBUG] ============ 响应数据 ============`);
+    logger(`[Qwen2API-Video DEBUG] ${JSON.stringify(submitResp.data, null, 2)}`);
 
     if (submitResp.data?.data?.code) {
       throw new Error(`任务提交失败：${submitResp.data.data.details || submitResp.data.data.code}`);
@@ -261,6 +287,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
     // 提取视频任务 ID 或直接的视频 URL
     const content = submitResp.data?.choices?.[0]?.message?.content;
+    logger(`[Qwen2API-Video DEBUG] 响应 content: ${content}`);
     if (!content) {
       throw new Error("未获取到视频生成结果");
     }
@@ -271,24 +298,30 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
     if (taskIdMatch) {
       const taskId = taskIdMatch[1];
-      logger(`视频任务 ID：${taskId}，开始轮询结果...`);
+      logger(`[Qwen2API-Video DEBUG] 提取到 task_id: ${taskId}`);
+      logger(`[Qwen2API-Video DEBUG] 开始轮询任务状态...`);
 
       // 轮询视频任务状态
       const pollResult = await pollTask(
         async () => {
-          const statusResp = await axios.get(`${baseUrl}/api/v2/video/tasks/${taskId}`, { headers });
+          const statusUrl = `${baseUrl}/api/v2/video/tasks/${taskId}`;
+          logger(`[Qwen2API-Video DEBUG] 轮询 GET: ${statusUrl}`);
+          const statusResp = await axios.get(statusUrl, { headers });
           const taskData = statusResp.data?.data;
+          logger(`[Qwen2API-Video DEBUG] 轮询响应：${JSON.stringify(taskData, null, 2)}`);
 
           if (taskData?.status === "completed" || taskData?.status === "success") {
             videoUrl = taskData?.video_url || taskData?.content?.video_url;
+            logger(`[Qwen2API-Video DEBUG] 任务完成，video_url: ${videoUrl}`);
             return { completed: true, data: videoUrl };
           }
 
           if (taskData?.status === "failed") {
+            logger(`[Qwen2API-Video DEBUG] 任务失败：${JSON.stringify(taskData, null, 2)}`);
             return { completed: true, error: taskData?.error || "视频生成失败" };
           }
 
-          logger(`视频任务生成中，当前状态：${taskData?.status || "unknown"}`);
+          logger(`[Qwen2API-Video DEBUG] 任务进行中，当前状态：${taskData?.status || "unknown"}`);
           return { completed: false };
         },
         5000,
@@ -301,18 +334,21 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
 
       videoUrl = pollResult.data;
     } else {
+      logger(`[Qwen2API-Video DEBUG] 未找到 task_id，尝试直接提取视频 URL`);
       // 尝试直接提取视频 URL
       const urlMatch = content.match(/https?:\/\/[^\s"')\]]+\.mp4/);
       if (!urlMatch) {
         throw new Error("无法从响应中提取视频 URL 或任务 ID");
       }
       videoUrl = urlMatch[0];
+      logger(`[Qwen2API-Video DEBUG] 提取到视频 URL: ${videoUrl}`);
     }
 
-    logger(`视频生成完成，开始转换 Base64`);
+    logger(`[Qwen2API-Video DEBUG] 视频生成完成，开始转换 Base64`);
     return await urlToBase64(videoUrl!);
-  } catch (error) {
-    logger(`Qwen2API-Video 视频生成失败：${error.message}`);
+  } catch (error: any) {
+    logger(`[Qwen2API-Video DEBUG] 错误：${error.message}`);
+    logger(`[Qwen2API-Video DEBUG] 完整错误堆栈：${error.stack}`);
     throw new Error(`Qwen2API-Video 视频生成失败：${error.message}`);
   }
 };

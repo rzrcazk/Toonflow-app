@@ -38,7 +38,6 @@ interface VideoModel {
   associationSkills?: string;
   audio: "optional" | false | true;
   durationResolutionMap: { duration: number[]; resolution: string[] }[];
-  aspectRatios?: string[]; // 支持的宽高比选项，如 ["16:9", "9:16"]
 }
 
 interface TTSModel {
@@ -75,7 +74,7 @@ interface ImageConfig {
 interface VideoConfig {
   duration: number;
   resolution: string;
-  aspectRatio: string; // 动态值，如 "16:9" 或 "9:16"
+  aspectRatio: "16:9" | "9:16";
   prompt: string;
   referenceList?: ReferenceList[];
   audio?: boolean;
@@ -132,7 +131,6 @@ const vendor: VendorConfig = {
       type: "video",
       mode: ["text", "singleImage", "startEndRequired"],
       audio: false,
-      aspectRatios: ["16:9", "9:16"],
       durationResolutionMap: [
         { duration: [5], resolution: ["720p"] },
       ],
@@ -173,6 +171,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const baseUrl = vendor.inputValues.baseUrl;
   const headers = getHeaders();
 
+  // 处理参考资源
   const imageRefs = config.referenceList?.filter((r) => r.type === "image") || [];
   let messageContent: any;
 
@@ -198,8 +197,12 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
     stream: false,
   };
 
-  logger(`[Qwen2API-Video] 开始提交视频生成任务，模型：${model.modelName}，宽高比：${config.aspectRatio}`);
+  logger(`[Qwen2API-Video] 开始提交视频生成任务`);
+  logger(`[Qwen2API-Video] 模型：${model.modelName}`);
+  logger(`[Qwen2API-Video] Prompt: ${config.prompt.substring(0, 100)}...`);
+  logger(`[Qwen2API-Video] aspectRatio: ${config.aspectRatio}`);
   logger(`[Qwen2API-Video] 请求 URL: ${baseUrl}/v1/chat/completions`);
+  logger(`[Qwen2API-Video] 请求 Headers: ${JSON.stringify(headers)}`);
   logger(`[Qwen2API-Video] 请求 Body: ${JSON.stringify(reqBody, null, 2)}`);
 
   try {
@@ -216,9 +219,10 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
     const urlMatch = content.match(/(https?:\/\/\S+\.mp4[^\s)"'\]]*)/i) || content.match(/(https?:\/\/\S+)/);
     if (!urlMatch) throw new Error(`无法从响应中提取视频 URL，响应：${content}`);
 
-    logger(`[Qwen2API-Video] 提取到视频 URL: ${urlMatch[1]}`);
+    const videoUrl = urlMatch[1];
+    logger(`[Qwen2API-Video] 提取到视频 URL: ${videoUrl}`);
     logger(`[Qwen2API-Video] 视频生成完成，开始转换 Base64`);
-    return await urlToBase64(urlMatch[1]);
+    return await urlToBase64(videoUrl);
   } catch (error: any) {
     logger(`[Qwen2API-Video] 错误：${error.message}`);
     if (error.response) {

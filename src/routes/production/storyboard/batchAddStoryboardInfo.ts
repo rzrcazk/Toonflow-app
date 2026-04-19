@@ -77,7 +77,9 @@ export default router.post(
         await u.db("o_videoTrack").where("id", trackId).update({ duration: trackDuration });
       } else {
         // 不存在，新建videoTrack
-        const [newTrackId] = await u.db("o_videoTrack").insert({
+        const newTrackId = Date.now()
+        await u.db("o_videoTrack").insert({
+          id: newTrackId,
           scriptId,
           projectId,
           duration: trackDuration,
@@ -92,7 +94,7 @@ export default router.post(
       lastStoryboard.map(async (i) => {
         return {
           associateAssetsIds: await u.db("o_assets2Storyboard").where("storyboardId", i.id).orderBy("rowid").select("assetId").pluck("assetId"),
-          src: i.filePath ? await u.oss.getFileUrl(i.filePath) : "",
+          src: i.filePath ? await u.oss.getSmallImageUrl(i.filePath) : "",
           id: i.id,
           trackId: i.trackId,
           prompt: i.prompt,

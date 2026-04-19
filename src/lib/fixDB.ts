@@ -1,14 +1,18 @@
-import u from "@/utils";
 import path from "path";
 import fs from "fs";
 import { Knex } from "knex";
-import db from "@/utils/db";
 import { transform } from "sucrase";
 import rawVendorData from "./vendor.json";
+import getPath from "@/utils/getPath";
+import vm from "@/utils/vm";
 
 const vendorData = rawVendorData as Record<string, string>;
 
 export default async (knex: Knex): Promise<void> => {
+  const db = knex;
+
+  // 延迟加载 vendor 工具以避免循环依赖
+  const vendorUtils = await import("@/utils/vendor");
   const addColumn = async (table: string, column: string, type: string) => {
     if (!(await knex.schema.hasTable(table))) return;
     if (!(await knex.schema.hasColumn(table, column))) {
@@ -111,7 +115,7 @@ export default async (knex: Knex): Promise<void> => {
   for (const item of data) {
     let { id, code } = item;
     const filename = `${id}.ts`;
-    const rootDir = u.getPath("vendor");
+    const rootDir = getPath("vendor");
     if (!code && fs.existsSync(path.join(rootDir, filename))) continue;
     if (!fs.existsSync(rootDir)) fs.mkdirSync(rootDir, { recursive: true });
     if (!fs.existsSync(path.join(rootDir, filename))) {
@@ -125,7 +129,7 @@ export default async (knex: Knex): Promise<void> => {
   for (const id of defList) {
     if (!existingIds.includes(id)) {
       const tsCode = vendorData[`${id}.ts`];
-      if (tsCode) await tempOnsert(tsCode);
+      if (tsCode) await tempOnsert(knex, tsCode, vendorUtils);
     }
   }
 
@@ -136,27 +140,51 @@ export default async (knex: Knex): Promise<void> => {
   await dropColumn("o_vendorConfig", "inputs");
   await dropColumn("o_vendorConfig", "createTime");
 
-  const volcengineVer = await u.vendor.getVendor("volcengine").version;
+  const volcengineVer = await vendorUtils.getVendor("volcengine").version;
   if (Number(volcengineVer) < 2.3) {
-    u.vendor.writeCode("volcengine", vendorData["volcengine.ts"]);
+    vendorUtils.writeCode("volcengine", vendorData["volcengine.ts"]);
   }
-  const minimaxVer = await u.vendor.getVendor("minimax").version;
+  const minimaxVer = await vendorUtils.getVendor("minimax").version;
   if (Number(minimaxVer) < 2.1) {
-    u.vendor.writeCode("minimax", vendorData["minimax.ts"]);
+    vendorUtils.writeCode("minimax", vendorData["minimax.ts"]);
+  }
+
+  // 迁移 qwen2api 和 qwen2api-video 的 token 字段到 apiKey
+  for (const vendorId of ["qwen2api", "qwen2api-video"]) {
+    // 只有在 vendor.json 中存在对应文件才处理
+    if (!vendorData[`${vendorId}.ts`]) continue;
+
+    const vendorRow = await knex("o_vendorConfig").where("id", vendorId).first();
+    if (vendorRow && vendorRow.inputValues) {
+      const inputValues = JSON.parse(vendorRow.inputValues);
+      // 如果存在 token 字段但不存在 apiKey 字段，进行迁移
+      if (inputValues.token && !inputValues.apiKey) {
+        inputValues.apiKey = inputValues.token;
+        delete inputValues.token;
+        await knex("o_vendorConfig").where("id", vendorId).update({
+          inputValues: JSON.stringify(inputValues),
+        });
+      }
+    }
+    // 更新 vendor 代码到最新版本
+    const vendorVer = await vendorUtils.getVendor(vendorId).version;
+    if (Number(vendorVer) < 1.2) {
+      vendorUtils.writeCode(vendorId, vendorData[`${vendorId}.ts`]);
+    }
   }
 };
 
-async function tempOnsert(tsCode: string) {
+async function tempOnsert(knex: Knex, tsCode: string, vendorUtils: typeof import("@/utils/vendor")) {
   const jsCode = transform(tsCode, { transforms: ["typescript"] }).code;
-  const exports = u.vm(jsCode);
+  const exports = vm(jsCode);
   const vendor = exports.vendor;
-  const data = await u.db("o_vendorConfig").where("id", vendor.id).first();
+  const data = await knex("o_vendorConfig").where("id", vendor.id).first();
   if (data) return;
-  await u.db("o_vendorConfig").insert({
+  await knex("o_vendorConfig").insert({
     id: vendor.id,
     inputValues: JSON.stringify(vendor.inputValues ?? {}),
     models: JSON.stringify([]),
     enable: vendor.id == "toonflow" ? 1 : 0,
   });
-  u.vendor.writeCode(vendor.id, tsCode);
+  vendorUtils.writeCode(vendor.id, tsCode);
 }

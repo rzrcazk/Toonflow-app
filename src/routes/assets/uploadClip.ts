@@ -39,19 +39,24 @@ export default router.post(
     const ext = getExtFromBase64(base64Data);
     const savePath = `/${projectId}/assets/${uuid()}.${ext}`;
 
-    await u.oss.writeFile(savePath, Buffer.from(base64Data.match(/base64,([A-Za-z0-9+/=]+)/)[1] ?? "", "base64"));
-    const [id] = await u.db("o_assets").insert({
+    const base64Match = base64Data.match(/base64,([A-Za-z0-9+/=]+)/);
+    if (!base64Match) throw new Error("无效的 base64 数据格式");
+    await u.oss.writeFile(savePath, Buffer.from(base64Match[1], "base64"));
+    const result = await u.db("o_assets").insert({
       type: type,
       projectId: projectId,
       name,
       startTime: Date.now(),
-    });
-    const [imageId] = await u.db("o_image").insert({
+    }).returning('id');
+    const id = result[0]?.id ?? result[0];
+    const imageResult = await u.db("o_image").insert({
+      projectId,
       filePath: savePath,
       type,
       assetsId: id,
       state: "已完成",
-    });
+    }).returning('id');
+    const imageId = result[0]?.id ?? result[0];
     await u.db("o_assets").where("id", id).update({
       imageId: imageId,
     });

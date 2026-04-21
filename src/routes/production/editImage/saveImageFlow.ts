@@ -26,9 +26,10 @@ export default router.post(
         });
       }
     });
-    const [insertFlowId] = await u.db("o_imageFlow").insert({
+    const result = await u.db("o_imageFlow").insert({
       flowData: JSON.stringify({ edges, nodes }),
-    });
+    }).returning('id');
+    const insertFlowId = result[0]?.id ?? result[0];
     return res.status(200).send(success({ id: insertFlowId }));
   },
 );

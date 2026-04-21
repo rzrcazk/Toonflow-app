@@ -12,7 +12,8 @@ export default router.post(
   }),
   async (req, res) => {
     const { ids } = req.body;
-    const data = await u.db("o_script").whereIn("id", ids).whereNot("extractState", "生成中").select("id", "extractState", "errorReason");
+    // extractState: 0=待提取，1=完成，2=生成中，-1=失败
+    const data = await u.db("o_script").whereIn("id", ids).whereNot("extractState", 2).select("id", "extractState", "errorReason");
     res.status(200).send(success(data));
   },
 );

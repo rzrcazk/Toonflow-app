@@ -68,6 +68,8 @@ if (DB_TYPE === "pg") {
       const { initPgSchema } = await import("@/lib/initPg");
       await initPgSchema(db);
     }
+
+    console.log("PostgreSQL 日期类型使用默认 ISO 字符串格式");
   }
 
   await fixDB(db);

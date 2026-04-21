@@ -17,6 +17,7 @@ export default router.post(
         sources: z.string(),
       }),
     ),
+    // 用户选择的文本 LLM 模型（用于生成视频提示词）
     model: z.string(),
   }),
   async (req, res) => {
@@ -32,8 +33,8 @@ export default router.post(
             .select("videoDesc", "prompt", "track", "duration", "shouldGenerateImage")
             .first();
           // 查询分镜关联的资产ID
-          const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).orderBy("rowid").select("assetId");
-          const associateAssetsIds = assetRows.map((row: any) => row.assetId);
+          const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).orderBy("id").select("assetsId");
+          const associateAssetsIds = assetRows.map((row: any) => row.assetsId);
           return {
             ...storyboard,
             associateAssetsIds,
@@ -90,7 +91,7 @@ export default router.post(
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
     const content = `
-          **模型名称**：${modelData},
+          **目标视频模型**：${modelData},
           **资产信息**（角色、场景、道具):${assets
         .filter((i) => i.filePath)
         .map((i) => `[${i.id},${i.type},${i.name}]`)
@@ -104,7 +105,8 @@ export default router.post(
           `;
 
     try {
-      const { text } = await u.Ai.Text("universalAi").invoke({
+      // 使用前端传入的模型（用户选择的文本 LLM）
+      const { text } = await u.Ai.Text(model).invoke({
         system: videoPromptGeneration,
         messages: [
           {
@@ -122,6 +124,7 @@ export default router.post(
       });
       res.status(200).send(success(text));
     } catch (e) {
+      console.error("[generateVideoPrompt] 生成失败:", e);
       res.status(400).send(error(u.error(e).message));
     }
   },

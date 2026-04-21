@@ -5,6 +5,7 @@ import { transform } from "sucrase";
 import rawVendorData from "./vendor.json";
 import getPath from "@/utils/getPath";
 import vm from "@/utils/vm";
+import { v4 as uuidv4 } from "uuid";
 
 const vendorData = rawVendorData as Record<string, string>;
 
@@ -35,7 +36,74 @@ export default async (knex: Knex): Promise<void> => {
       });
     }
   };
-  //矫正因软件异常退出导致的状态不一致问题
+  // 清理已删除的供应商数据库记录（必须在查询 data 之前执行）
+  await knex("o_vendorConfig").where("id", "qwen2api-video").del();
+  await knex("o_vendorConfig").where("id", "null").del();
+  // 同时删除本地文件
+  const rootDir = getPath("vendor");
+  const filesToDelete = ["qwen2api-video.ts", "null.ts"];
+  for (const file of filesToDelete) {
+    const filePath = path.join(rootDir, file);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
+  // 添加 o_storyboard.projectId 字段
+  await addColumn("o_storyboard", "projectId", "integer");
+  // 添加 o_storyboard.shouldGenerateImage 字段
+  await addColumn("o_storyboard", "shouldGenerateImage", "integer");
+  // 添加 o_storyboard.videoDesc 字段
+  await addColumn("o_storyboard", "videoDesc", "text");
+  // 添加 o_storyboard.trackId 字段
+  await addColumn("o_storyboard", "trackId", "integer");
+  // 添加 o_storyboard.filePath 字段
+  await addColumn("o_storyboard", "filePath", "string");
+  // 添加 o_storyboard.index 字段
+  await addColumn("o_storyboard", "index", "integer");
+  // 添加 o_storyboard.flowId 字段
+  await addColumn("o_storyboard", "flowId", "integer");
+
+  // 添加 o_imageFlow.flowData 字段
+  await addColumn("o_imageFlow", "flowData", "text");
+  // 添加 o_assets.flowId 字段
+  await addColumn("o_assets", "flowId", "integer");
+
+  // 添加 o_videoTrack.scriptId 和 o_videoTrack.projectId 字段
+  await addColumn("o_videoTrack", "scriptId", "integer");
+  await addColumn("o_videoTrack", "projectId", "integer");
+  // 添加 o_videoTrack.duration 字段
+  await addColumn("o_videoTrack", "duration", "integer");
+  // 添加 o_videoTrack.prompt 字段
+  await addColumn("o_videoTrack", "prompt", "text");
+
+  // 添加 o_video.videoTrackId 字段
+  await addColumn("o_video", "videoTrackId", "integer");
+
+  // 移除 o_videoTrack.videoId 和 o_videoTrack.trackIndex 的 NOT NULL 约束
+  if ((knex.client as any).config?.client === "pg") {
+    const hasVideoTrackTable = await knex.schema.hasTable("o_videoTrack");
+    if (hasVideoTrackTable) {
+      // 检查 videoId 是否有 NOT NULL 约束
+      const videoIdColInfo = await knex.raw(`
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_name = 'o_videoTrack' AND column_name = 'videoId'
+      `);
+      if (videoIdColInfo.rows?.[0]?.is_nullable === "NO") {
+        await knex.raw(`ALTER TABLE "o_videoTrack" ALTER COLUMN "videoId" DROP NOT NULL`);
+      }
+      // 检查 trackIndex 是否有 NOT NULL 约束
+      const trackIndexColInfo = await knex.raw(`
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_name = 'o_videoTrack' AND column_name = 'trackIndex'
+      `);
+      if (trackIndexColInfo.rows?.[0]?.is_nullable === "NO") {
+        await knex.raw(`ALTER TABLE "o_videoTrack" ALTER COLUMN "trackIndex" DROP NOT NULL`);
+      }
+    }
+  }
+
+  // 矫正因软件异常退出导致的状态不一致问题
   await db("o_novel").where("eventState", 0).update({
     eventState: -1,
     errorReason: "软件退出导致失败",
@@ -61,6 +129,226 @@ export default async (knex: Knex): Promise<void> => {
     errorReason: "软件退出导致失败",
   });
 
+  // 迁移 memories 表 id 列从 increments 到 string（PostgreSQL）
+  if ((knex.client as any).config?.client === "pg") {
+    const hasMemoriesTable = await knex.schema.hasTable("memories");
+    if (hasMemoriesTable) {
+      const colInfo = await knex.raw(`
+        SELECT data_type, is_nullable
+        FROM information_schema.columns
+        WHERE table_name = 'memories' AND column_name = 'id'
+      `);
+      const isIntegerId = colInfo.rows?.[0]?.data_type === "integer";
+      if (isIntegerId) {
+        // 备份数据
+        const rows = await knex("memories").select("*");
+        const idMapping = rows.map((r: any) => ({ oldId: r.id, uuid: uuidv4() }));
+
+        // 删除旧表重建
+        await knex.schema.dropTable("memories");
+        await knex.schema.createTable("memories", (table) => {
+          table.string("id").primary();
+          table.string("agentId").notNullable();
+          table.string("isolationKey").nullable();
+          table.string("type").nullable();
+          table.string("role").nullable();
+          table.string("name").nullable();
+          table.text("content").notNullable();
+          table.text("embedding").nullable();
+          table.text("relatedMessageIds").nullable();
+          table.boolean("summarized").defaultTo(false);
+          table.jsonb("metadata").nullable();
+          table.decimal("score", 10, 2).nullable();
+          table.bigInteger("createTime").nullable();
+          table.timestamp("created_at").defaultTo(knex.fn.now());
+        });
+
+        // 恢复数据，使用新的 UUID
+        for (const row of rows) {
+          const mapping = idMapping.find(m => m.oldId === row.id);
+          await knex("memories").insert({
+            ...row,
+            id: mapping?.uuid,
+            createTime: row.createTime ? BigInt(row.createTime) : null,
+          });
+        }
+        console.log("memories 表 id 列已从 integer 迁移到 UUID");
+      }
+    }
+
+    // 去除 o_script.novelId 的 NOT NULL 约束
+    const hasScriptTable = await knex.schema.hasTable("o_script");
+    if (hasScriptTable && await knex.schema.hasColumn("o_script", "novelId")) {
+      const colInfo = await knex.raw(`
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_name = 'o_script' AND column_name = 'novelId'
+      `);
+      if (colInfo.rows?.[0]?.is_nullable === "NO") {
+        await knex.raw(`ALTER TABLE "o_script" ALTER COLUMN "novelId" DROP NOT NULL`);
+        console.log("o_script.novelId NOT NULL 约束已移除");
+      }
+    }
+
+    // 创建 o_scriptNovelMap 表（如不存在），并回填历史数据
+    const hasMapTable = await knex.schema.hasTable("o_scriptNovelMap");
+    if (!hasMapTable) {
+      await knex.schema.createTable("o_scriptNovelMap", (table) => {
+        table.increments("id").primary();
+        table.integer("scriptId").notNullable();
+        table.integer("novelId").notNullable();
+        table.integer("order").defaultTo(0);
+        table.timestamp("created_at").defaultTo(knex.fn.now());
+      });
+      console.log("o_scriptNovelMap 表已创建，开始回填历史数据...");
+
+      // 对每个脚本，将其项目下所有章节写入关联表
+      const scripts = await knex("o_script").select("id", "projectId");
+      for (const script of scripts) {
+        const novels = await knex("o_novel").where({ projectId: script.projectId }).orderBy("order").select("id");
+        if (novels.length > 0) {
+          await knex("o_scriptNovelMap").insert(
+            novels.map((novel: any, index: number) => ({
+              scriptId: script.id,
+              novelId: novel.id,
+              order: index,
+            }))
+          );
+        }
+      }
+      console.log("o_scriptNovelMap 历史数据回填完成");
+    }
+  }
+
+  // SQLite 模式下创建 memories 表（如果不存在）
+  if ((knex.client as any).config?.client === "better-sqlite3") {
+    const hasMemoriesTable = await knex.schema.hasTable("memories");
+    if (!hasMemoriesTable) {
+      await knex.schema.createTable("memories", (table) => {
+        table.string("id").primary(); // UUID 字符串
+        table.string("agentId").notNullable();
+        table.string("isolationKey").nullable();
+        table.string("type").nullable();
+        table.string("role").nullable();
+        table.string("name").nullable();
+        table.text("content").notNullable();
+        table.text("embedding").nullable();
+        table.text("relatedMessageIds").nullable();
+        table.boolean("summarized").defaultTo(false);
+        table.json("metadata").nullable();
+        table.decimal("score", 10, 2).nullable();
+        table.bigInteger("createTime").nullable();
+        table.timestamp("created_at").defaultTo(knex.fn.now());
+      });
+      console.log("memories 表已创建（SQLite，UUID id）");
+    }
+
+    // 创建 o_scriptNovelMap 表（SQLite）
+    const hasMapTableSqlite = await knex.schema.hasTable("o_scriptNovelMap");
+    if (!hasMapTableSqlite) {
+      await knex.schema.createTable("o_scriptNovelMap", (table) => {
+        table.increments("id").primary();
+        table.integer("scriptId").notNullable();
+        table.integer("novelId").notNullable();
+        table.integer("order").defaultTo(0);
+        table.timestamp("created_at").defaultTo(knex.fn.now());
+      });
+      const scripts = await knex("o_script").select("id", "projectId");
+      for (const script of scripts) {
+        const novels = await knex("o_novel").where({ projectId: script.projectId }).orderBy("order").select("id");
+        if (novels.length > 0) {
+          await knex("o_scriptNovelMap").insert(
+            novels.map((novel: any, index: number) => ({
+              scriptId: script.id,
+              novelId: novel.id,
+              order: index,
+            }))
+          );
+        }
+      }
+      console.log("o_scriptNovelMap 表已创建并回填（SQLite）");
+    }
+  }
+
+  // 添加 o_assets 新字段
+  await addColumn("o_assets", "imageId", "integer");
+  await addColumn("o_assets", "assetsId", "integer");
+  await addColumn("o_assets", "remark", "string");
+  await addColumn("o_assets", "startTime", "bigInteger");
+  // 修复 o_tasks.startTime 类型从 bigInteger 到 timestamptz
+  if ((knex.client as any).config?.client === "pg") {
+    const hasTasksTable = await knex.schema.hasTable("o_tasks");
+    if (hasTasksTable && await knex.schema.hasColumn("o_tasks", "startTime")) {
+      const colInfo = await knex.raw(`
+        SELECT data_type FROM information_schema.columns
+        WHERE table_name = 'o_tasks' AND column_name = 'startTime'
+      `);
+      if (colInfo.rows?.[0]?.data_type === "bigint") {
+        await knex.raw(`ALTER TABLE "o_tasks" ALTER COLUMN "startTime" TYPE TIMESTAMPTZ USING to_timestamp("startTime" / 1000.0)`);
+      }
+    }
+    // 修复 o_tasks.model 类型从 varchar(255) 到 text
+    if (hasTasksTable && await knex.schema.hasColumn("o_tasks", "model")) {
+      const modelColInfo = await knex.raw(`
+        SELECT data_type, character_maximum_length FROM information_schema.columns
+        WHERE table_name = 'o_tasks' AND column_name = 'model'
+      `);
+      const modelCol = modelColInfo.rows?.[0];
+      if (modelCol?.data_type === "character varying" && modelCol?.character_maximum_length === 255) {
+        await knex.raw(`ALTER TABLE "o_tasks" ALTER COLUMN "model" TYPE TEXT`);
+      }
+    }
+    // 修复 o_tasks.describe 类型从 varchar(255) 到 text
+    if (hasTasksTable && await knex.schema.hasColumn("o_tasks", "describe")) {
+      const describeColInfo = await knex.raw(`
+        SELECT data_type, character_maximum_length FROM information_schema.columns
+        WHERE table_name = 'o_tasks' AND column_name = 'describe'
+      `);
+      const describeCol = describeColInfo.rows?.[0];
+      if (describeCol?.data_type === "character varying" && describeCol?.character_maximum_length === 255) {
+        await knex.raw(`ALTER TABLE "o_tasks" ALTER COLUMN "describe" TYPE TEXT`);
+      }
+    }
+    // 修复 o_tasks.relatedObjects 类型从 varchar(255) 到 text
+    if (hasTasksTable && await knex.schema.hasColumn("o_tasks", "relatedObjects")) {
+      const relatedObjectsColInfo = await knex.raw(`
+        SELECT data_type, character_maximum_length FROM information_schema.columns
+        WHERE table_name = 'o_tasks' AND column_name = 'relatedObjects'
+      `);
+      const relatedObjectsCol = relatedObjectsColInfo.rows?.[0];
+      if (relatedObjectsCol?.data_type === "character varying" && relatedObjectsCol?.character_maximum_length === 255) {
+        await knex.raw(`ALTER TABLE "o_tasks" ALTER COLUMN "relatedObjects" TYPE TEXT`);
+      }
+    }
+  } else {
+    await alterColumnType("o_tasks", "startTime", "timestamp");
+    await alterColumnType("o_tasks", "model", "text");
+    await alterColumnType("o_tasks", "describe", "text");
+    await alterColumnType("o_tasks", "relatedObjects", "text");
+  }
+  // 添加 o_image 新字段
+  await addColumn("o_image", "filePath", "string");
+  await addColumn("o_image", "model", "string");
+  await addColumn("o_image", "resolution", "string");
+  await addColumn("o_image", "assetsId", "integer");
+  // 添加 o_assetsRole2Audio 新字段
+  const hasAssetsRole2Audio = await knex.schema.hasTable("o_assetsRole2Audio");
+  if (hasAssetsRole2Audio) {
+    const hasAssetsRoleId = await knex.schema.hasColumn("o_assetsRole2Audio", "assetsRoleId");
+    const hasAssetsId = await knex.schema.hasColumn("o_assetsRole2Audio", "assetsId");
+    if (hasAssetsId && !hasAssetsRoleId) {
+      // 重命名 assetsId 为 assetsRoleId
+      if ((knex.client as any).config?.client === "pg") {
+        await knex.raw(`ALTER TABLE "o_assetsRole2Audio" RENAME COLUMN "assetsId" TO "assetsRoleId"`);
+      } else {
+        await knex.schema.alterTable("o_assetsRole2Audio", (t) => {
+          t.renameColumn("assetsId", "assetsRoleId");
+        });
+      }
+    } else if (!hasAssetsId && !hasAssetsRoleId) {
+      await addColumn("o_assetsRole2Audio", "assetsRoleId", "integer");
+    }
+    await addColumn("o_assetsRole2Audio", "assetsAudioId", "integer");
+  }
   // 添加新字段
   await addColumn("o_prompt", "useData", "text");
   // 添加新字段
@@ -69,6 +357,15 @@ export default async (knex: Knex): Promise<void> => {
   await addColumn("o_agentDeploy", "temperature", "integer");
   // 添加新字段
   await addColumn("o_agentDeploy", "maxOutputTokens", "integer");
+  // 迁移 o_agentDeploy.vendorId 从 integer 到 string（PostgreSQL 需要显式 USING 子句）
+  if ((knex.client as any).config?.client === "pg") {
+    if (await knex.schema.hasColumn("o_agentDeploy", "vendorId")) {
+      const colInfo = await knex.raw(`SELECT data_type FROM information_schema.columns WHERE table_name = 'o_agentDeploy' AND column_name = 'vendorId'`);
+      if (colInfo.rows?.[0]?.data_type === "integer") {
+        await knex.raw(`ALTER TABLE "o_agentDeploy" ALTER COLUMN "vendorId" TYPE VARCHAR USING "vendorId"::VARCHAR`);
+      }
+    }
+  }
 
   //添加数据高级配置
   const advancedAgentList = [
@@ -116,12 +413,13 @@ export default async (knex: Knex): Promise<void> => {
     let { id, code } = item;
     const filename = `${id}.ts`;
     const rootDir = getPath("vendor");
-    if (!code && fs.existsSync(path.join(rootDir, filename))) continue;
     if (!fs.existsSync(rootDir)) fs.mkdirSync(rootDir, { recursive: true });
     if (!fs.existsSync(path.join(rootDir, filename))) {
-      code = vendorData[filename] || code;
-      code = code ?? "";
-      fs.writeFileSync(path.join(rootDir, filename), code);
+      // 仅从 vendor.json 恢复，不从数据库 code 字段恢复
+      const vendorCode = vendorData[filename];
+      if (vendorCode) {
+        fs.writeFileSync(path.join(rootDir, filename), vendorCode);
+      }
     }
   }
   const defList = Object.keys(vendorData).map((filename) => filename.replace(/\.ts$/, ""));
@@ -149,27 +447,23 @@ export default async (knex: Knex): Promise<void> => {
     vendorUtils.writeCode("minimax", vendorData["minimax.ts"]);
   }
 
-  // 迁移 qwen2api 和 qwen2api-video 的 token 字段到 apiKey
-  for (const vendorId of ["qwen2api", "qwen2api-video"]) {
-    // 只有在 vendor.json 中存在对应文件才处理
-    if (!vendorData[`${vendorId}.ts`]) continue;
-
-    const vendorRow = await knex("o_vendorConfig").where("id", vendorId).first();
-    if (vendorRow && vendorRow.inputValues) {
-      const inputValues = JSON.parse(vendorRow.inputValues);
-      // 如果存在 token 字段但不存在 apiKey 字段，进行迁移
-      if (inputValues.token && !inputValues.apiKey) {
-        inputValues.apiKey = inputValues.token;
-        delete inputValues.token;
-        await knex("o_vendorConfig").where("id", vendorId).update({
-          inputValues: JSON.stringify(inputValues),
-        });
-      }
+  // 迁移 qwen2api 的 token 字段到 apiKey（不依赖 vendor.json，只要数据库中存在即处理）
+  const vendorRow = await knex("o_vendorConfig").where("id", "qwen2api").first();
+  if (vendorRow && vendorRow.inputValues) {
+    const inputValues = JSON.parse(vendorRow.inputValues);
+    if (inputValues.token && !inputValues.apiKey) {
+      inputValues.apiKey = inputValues.token;
+      delete inputValues.token;
+      await knex("o_vendorConfig").where("id", "qwen2api").update({
+        inputValues: JSON.stringify(inputValues),
+      });
     }
-    // 更新 vendor 代码到最新版本
-    const vendorVer = await vendorUtils.getVendor(vendorId).version;
+  }
+  // 更新 qwen2api vendor 代码到最新版本
+  if (vendorData["qwen2api.ts"]) {
+    const vendorVer = await vendorUtils.getVendor("qwen2api").version;
     if (Number(vendorVer) < 1.2) {
-      vendorUtils.writeCode(vendorId, vendorData[`${vendorId}.ts`]);
+      vendorUtils.writeCode("qwen2api", vendorData["qwen2api.ts"]);
     }
   }
 };

@@ -27,7 +27,7 @@ export default router.post(
         const insertData = assetsData.map((item) => {
           return {
             scriptId: id,
-            assetId: item.id,
+            assetsId: item.id,
           };
         });
         await u.db("o_scriptAssets").insert(insertData);

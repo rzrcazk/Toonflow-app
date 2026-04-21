@@ -82,11 +82,13 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
   if (!cfg) return res.status(400).send(error("不支持的类型"));
 
   // 2. 创建图片占位记录
-  const [imageId] = await u.db("o_image").insert({
+  const result = await u.db("o_image").insert({
+    projectId,
     type,
     state: "生成中",
     assetsId: id,
-  });
+  }).returning('id');
+  const imageId = result[0]?.id ?? result[0];
   await u.db("o_assets").where("id", id).update({ imageId });
 
   // 3. 准备生成参数
@@ -132,10 +134,12 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
 
     return res.status(200).send(success({ path, assetsId: id }));
   } catch (e) {
+    const errorMsg = u.error(e).message;
+    console.error(`[generateAssets] 生成失败 id=${id}:`, errorMsg);
     await u
       .db("o_image")
       .where("id", imageId)
-      .update({ state: "生成失败", errorReason: u.error(e).message });
-    return res.status(400).send(error(u.error(e).message || "图片生成失败"));
+      .update({ state: "生成失败", errorReason: errorMsg });
+    return res.status(400).send(error(errorMsg || "图片生成失败"));
   }
 });

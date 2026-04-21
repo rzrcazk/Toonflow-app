@@ -141,7 +141,7 @@ const vendor: VendorConfig = {
     { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "请输入 Qwen2API 服务的 API Key (如 sk-xxxxxxxx)" },
     { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：http://qwen2api:3000" },
   ],
-  inputValues: { apiKey: "", baseUrl: "http://qwen2api:3000" },
+  inputValues: { apiKey: "", baseUrl: "http://127.0.0.1:3004" },
   models: [
     // 图片模型
     {
@@ -309,4 +309,4 @@ exports.checkForUpdates = checkForUpdates;
 exports.updateVendor = updateVendor;
 
 // 这行代码用于确保当前文件被识别为模块，避免全局变量冲突
-export {};
+export { };

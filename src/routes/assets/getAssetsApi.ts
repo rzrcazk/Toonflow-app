@@ -48,6 +48,8 @@ export default router.post(
       childAssets.map(async (child) => ({
         ...child,
         src: child.filePath && (await filterTypeGetFileUrl(child.filePath!, child.type)),
+        // 将 created_at 赋值给 startTime 供前端显示
+        startTime: child.created_at ? new Date(child.created_at).getTime() : null,
       })),
     );
 
@@ -58,6 +60,8 @@ export default router.post(
         sonAssets: childAssetsWithSrc.filter((child) => child.assetsId === parent.id),
         src: parent.filePath && (await filterTypeGetFileUrl(parent.filePath!, parent.type)),
         ...(parent.type == "audio" ? { sex: parent.describe?.split("|")[0], describe: parent.describe?.split("|")[1] } : {}),
+        // 将 created_at 赋值给 startTime 供前端显示
+        startTime: parent.created_at ? new Date(parent.created_at).getTime() : null,
       })),
     );
 
@@ -74,7 +78,9 @@ export default router.post(
       })
       .count("* as total")
       .first()) as any;
-    res.status(200).send(success({ data: result, total: totalQuery?.total }));
+    // 将 total 转换为数字类型，PostgreSQL 的 count 返回字符串
+    const total = totalQuery?.total ? Number(totalQuery.total) : 0;
+    res.status(200).send(success({ data: result, total }));
   },
 );
 

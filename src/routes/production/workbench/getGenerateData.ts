@@ -42,13 +42,9 @@ export default router.post(
     if (!projectData?.videoModel) {
       return res.status(400).json(success("项目未配置视频模型"));
     }
-    let videoMode = "";
-    try {
-      videoMode = JSON.parse(projectData?.mode ?? "");
-    } catch (e) {
-      videoMode = projectData?.mode ?? "";
-    }
-    const isRef = Array.isArray(videoMode) ? true : false;
+    const isRef = (() => {
+      try { return Array.isArray(JSON.parse(projectData.mode ?? "null")); } catch { return false; }
+    })();
 
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     await Promise.all(
@@ -86,7 +82,7 @@ export default router.post(
       const storyIds = storyboardList.map((s) => s.id);
       const assetDatas = await u
         .db("o_assets2Storyboard")
-        .leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id")
+        .leftJoin("o_assets", "o_assets2Storyboard.assetsId", "o_assets.id")
         .leftJoin("o_image", "o_image.id", "o_assets.imageId")
         .whereIn("o_assets2Storyboard.storyboardId", storyIds as number[])
         .select("o_assets.*", "o_image.filePath", "o_assets2Storyboard.storyboardId");
@@ -144,7 +140,7 @@ export default router.post(
             .filter((v) => v.videoTrackId === trackId)
             .map(async (v) => ({
               id: v.id!,
-              src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
+              src: v.videoPath ? await u.oss.getFileUrl(v.videoPath) : "",
               state: v.state === "已完成" ? "已完成" : v.state === "生成中" ? "生成中" : v.state === "生成失败" ? "生成失败" : "未生成",
               errorReason: v?.errorReason ?? "",
             })),

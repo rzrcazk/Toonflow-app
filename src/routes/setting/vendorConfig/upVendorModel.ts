@@ -48,7 +48,12 @@ export default router.post(
 
     const models = await u.db("o_vendorConfig").where("id", id).first("models");
     if (models?.models) {
-      const existingModels = JSON.parse(models.models);
+      let existingModels: any[];
+      try {
+        existingModels = JSON.parse(models.models);
+      } catch {
+        throw new Error(`供应商 ${id} 的 models 数据损坏`);
+      }
       const modelIndex = existingModels.findIndex((m: any) => m.modelName !== modelName);
       if (modelIndex === -1) {
         existingModels.push(model);

@@ -1,10 +1,8 @@
 import express from "express";
 import u from "@/utils";
 import { z } from "zod";
-import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { Output } from "ai";
 const router = express.Router();
 
 export default router.post(
@@ -54,19 +52,23 @@ export default router.post(
     // 先批量为所有 assets 创建 image 记录并标记为"生成中"
     const imageIdMap: Record<number, number> = {};
     for (const item of assetsDataArr) {
-      const [imageId] = await u.db("o_image").insert({
+      const result = await u.db("o_image").insert({
+        projectId,
         assetsId: item.id,
         type: item.type,
         state: "生成中",
         resolution: projectSettingData?.imageQuality,
         model: projectSettingData?.imageModel,
-      });
+      }).returning('id');
+      const imageId = result[0]?.id ?? result[0];
       imageIdMap[item.id!] = imageId;
       await u.db("o_assets").where("id", item.id).update({ imageId: imageId });
     }
 
-    const imageData: { id: number; state: string; src: string }[] = [];
-    res.status(200).send(success("开始生成资产图片"));
+    // 立即返回空数组，前端会通过轮询获取状态更新
+    res.status(200).send(success([]));
+
+    // 在后台异步执行生成任务，不阻塞响应
     const generateSingleAsset = async (item: any) => {
       const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
@@ -77,12 +79,12 @@ export default router.post(
           {
             role: "user",
             content: `
-            父级资产描述: ${item.parentDescribe || "无详细描述"}
-            当前资产描述: ${item.describe || "无详细描述"}`,
+            父级资产描述：${item.parentDescribe || "无详细描述"}
+            当前资产描述：${item.describe || "无详细描述"}`,
           },
         ],
       });
-        await u.db("o_assets").where("id", item.id).update({ prompt: text });
+      await u.db("o_assets").where("id", item.id).update({ prompt: text });
 
       const imageBase64 = imageUrlRecord[item.assetsId!] ? await u.oss.getImageBase64(imageUrlRecord[item.assetsId!]) : null;
       try {
@@ -124,11 +126,18 @@ export default router.post(
       }
     };
 
-    // 按 concurrentCount 分批并发执行
-    for (let i = 0; i < assetsDataArr.length; i += concurrentCount) {
-      const batch = assetsDataArr.slice(i, i + concurrentCount);
-      const batchResults = await Promise.all(batch.map(generateSingleAsset));
-      imageData.push(...batchResults);
-    }
+    // 在后台异步执行，使用 setImmediate 确保响应先发送
+    setImmediate(async () => {
+      try {
+        // 按 concurrentCount 分批并发执行
+        for (let i = 0; i < assetsDataArr.length; i += concurrentCount) {
+          const batch = assetsDataArr.slice(i, i + concurrentCount);
+          const batchResults = await Promise.all(batch.map(generateSingleAsset));
+          // 结果不需要返回给前端，前端会通过轮询获取状态
+        }
+      } catch (err) {
+        console.error("[batchGenerateAssetsImage] 后台批量任务失败:", err);
+      }
+    });
   },
 );

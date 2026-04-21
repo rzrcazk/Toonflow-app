@@ -20,7 +20,7 @@ export default router.post(
     const { id, index, reel, chapter, chapterData, event } = req.body;
 
     await u.db("o_novel").where("id", id).update({
-      chapterIndex: index,
+      order: index,
       reel,
       chapter,
       chapterData,

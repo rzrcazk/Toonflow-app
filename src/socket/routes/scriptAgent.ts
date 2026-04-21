@@ -14,6 +14,7 @@ async function verifyToken(rawToken: string): Promise<Boolean> {
     jwt.verify(token, tokenKey as string);
     return true;
   } catch (err) {
+    console.warn("[scriptAgent] token 验证失败:", (err as Error).message);
     return false;
   }
 }

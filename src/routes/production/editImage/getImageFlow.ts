@@ -14,7 +14,12 @@ export default router.post(
     const { id, type } = req.body;
     const imageFlowData = await u.db("o_imageFlow").where("id", id).first();
     if (imageFlowData?.flowData) {
-      const parseFlow = JSON.parse(imageFlowData.flowData);
+      let parseFlow: any;
+      try {
+        parseFlow = JSON.parse(imageFlowData.flowData);
+      } catch {
+        throw new Error(`imageFlow id=${id} 的 flowData 数据损坏，不是合法 JSON`);
+      }
       await Promise.all(
         parseFlow.nodes.map(async (node: any) => {
           if (node.type === "upload") {

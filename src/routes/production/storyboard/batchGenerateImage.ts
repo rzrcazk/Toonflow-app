@@ -49,15 +49,15 @@ export default router.post(
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle", "videoRatio").first();
 
     const storyboardData = await u.db("o_storyboard").where("scriptId", scriptId).whereIn("id", finalStoryboardIds);
-    // 按 rowid 顺序查出每个 storyboard 关联的 assetId 有序列表
+    // 按 rowid 顺序查出每个 storyboard 关联的 assetsId 有序列表
     const assets2StoryboardRows = await u
       .db("o_assets2Storyboard")
       .whereIn("storyboardId", finalStoryboardIds)
-      .orderBy("rowid")
-      .select("storyboardId", "assetId");
+      .orderBy("id")
+      .select("storyboardId", "assetsId");
 
-    // 收集所有 assetId，批量查对应的 imageId
-    const allAssetIds = [...new Set(assets2StoryboardRows.map((r: any) => r.assetId))];
+    // 收集所有 assetsId，批量查对应的 imageId
+    const allAssetIds = [...new Set(assets2StoryboardRows.map((r: any) => r.assetsId))];
     const assetImageMap: Record<number, number> = {};
     if (allAssetIds.length > 0) {
       const assetRows = await u.db("o_assets").whereIn("id", allAssetIds).select("id", "imageId");
@@ -72,7 +72,7 @@ export default router.post(
       if (!assetRecord[item.storyboardId]) {
         assetRecord[item.storyboardId] = [];
       }
-      const imageId = assetImageMap[item.assetId];
+      const imageId = assetImageMap[item.assetsId];
       if (imageId != null) {
         assetRecord[item.storyboardId].push(imageId);
       }

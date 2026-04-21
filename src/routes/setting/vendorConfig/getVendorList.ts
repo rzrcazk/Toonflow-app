@@ -16,7 +16,10 @@ export default router.post("/", async (req, res) => {
         };
         return {
           ...item,
-          inputValues: JSON.parse(item.inputValues ?? "{}"),
+          inputValues: (() => {
+            try { return JSON.parse(item.inputValues ?? "{}"); }
+            catch { throw new Error(`供应商 ${item.id} 的 inputValues 数据损坏`); }
+          })(),
           models: await u.vendor.getModelList(item.id!),
           code: u.vendor.getCode(item.id!),
           description: vendor.description ?? "",

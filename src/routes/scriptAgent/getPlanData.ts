@@ -16,7 +16,7 @@ export default router.post(
     const row = await u.db("o_agentWorkData").where({ projectId: projectId, key: agentType }).first();
 
     if (!row) {
-      const [id] = await u.db("o_agentWorkData").insert({
+      const insertResult = await u.db("o_agentWorkData").insert({
         projectId: projectId,
         key: agentType,
         data: JSON.stringify({
@@ -24,6 +24,8 @@ export default router.post(
           adaptationStrategy: "",
         }),
       });
+      // SQLite 返回受影响行数，PostgreSQL 返回包含 id 的数组
+      const id = Array.isArray(insertResult) ? insertResult[0]?.id : insertResult;
       return res.status(200).send(
         success({
           data: {

@@ -89,7 +89,13 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
   const jsCode = transform(code, { transforms: ["typescript"] }).code;
   const running = u.vm(jsCode);
   if (running.vendor) {
-    Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
+    let inputValues: Record<string, any>;
+    try {
+      inputValues = JSON.parse(vendorConfigData.inputValues ?? "{}");
+    } catch {
+      throw new Error(`供应商配置解析失败 id=${id}：inputValues 不是合法 JSON`);
+    }
+    Object.assign(running.vendor.inputValues, inputValues);
     running.vendor.models = modelList;
   }
   const fn = running[fnName];
@@ -163,8 +169,8 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
-      ...(config?.temperature && { temperature: config.temperature }),
-      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
+      ...(config?.temperature && { temperature: config?.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config?.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
@@ -174,8 +180,8 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-      ...(config?.temperature && { temperature: config.temperature }),
-      ...(config?.maxOutputTokens && { maxOutputTokens: config.maxOutputTokens }),
+      ...(config?.temperature && { temperature: config?.temperature }),
+      ...(config?.maxOutputTokens && { maxOutputTokens: config?.maxOutputTokens }),
     } as Parameters<typeof streamText>[0]);
   }
 }

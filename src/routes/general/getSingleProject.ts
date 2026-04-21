@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { formatProjectList } from "@/utils/formatProject";
 const router = express.Router();
 
 // 获取单个项目
@@ -15,7 +16,6 @@ export default router.post(
     const { id } = req.body;
 
     const data = await u.db("o_project").where("id", id).select("*");
-
-    res.status(200).send(success(data));
+    res.status(200).send(success(formatProjectList(data)));
   }
 );

@@ -18,13 +18,13 @@ export default router.post(
       .db("o_video")
       .whereIn("id", videoIds)
       .whereIn("state", ["生成成功", "生成失败"])
-      .select("id", "state", "errorReason", "filePath");
+      .select("id", "state", "errorReason", "videoPath");
     res.status(200).send(
       success(
         await Promise.all(
           videoList.map(async (s) => ({
             ...s,
-            src: s.filePath ? await u.oss.getFileUrl(s.filePath) : "",
+            src: s.videoPath ? await u.oss.getFileUrl(s.videoPath) : "",
           })),
         ),
       ),

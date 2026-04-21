@@ -25,13 +25,13 @@ export default router.post(
     //获取相关资产
     const storyboardIds = storyboardData.map((s) => s.id as number);
 
-    // 修复：o_assets.id 关联 o_assets2Storyboard.assetId，按 storyboardId 过滤
+    // 修复：o_assets.id 关联 o_assets2Storyboard.assetsId，按 storyboardId 过滤
     const storyboardConfigs = await u
       .db("o_assets2Storyboard")
-      .leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id")
+      .leftJoin("o_assets", "o_assets2Storyboard.assetsId", "o_assets.id")
       .leftJoin("o_image", "o_assets.imageId", "o_image.id")
       .whereIn("o_assets2Storyboard.storyboardId", storyboardIds)
-      .select("o_assets2Storyboard.storyboardId", "o_assets.id as assetId", "o_assets.name", "o_assets.type", "o_image.filePath as avatar");
+      .select("o_assets2Storyboard.storyboardId", "o_assets.id as assetsId", "o_assets.name", "o_assets.type", "o_image.filePath as avatar");
 
     // 按 storyboardId 分组，生成 characters 列表
     const storyboardCharactersMap = storyboardConfigs.reduce<Record<number, { name: string; type: string; avatar?: string }[]>>((acc, cur) => {
@@ -65,7 +65,7 @@ export default router.post(
         );
         return {
           id: String(item.id),
-          createTime: item.createTime ?? undefined,
+          createTime: item.created_at ? new Date(item.created_at).getTime() : undefined,
           duration: item.duration ? Number(item.duration) : undefined,
           filePath: item.filePath || undefined,
           prompt: item.prompt ?? undefined,

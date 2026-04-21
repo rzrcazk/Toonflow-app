@@ -51,10 +51,12 @@ export default async function getConfig<T extends AIType>(aiType: T, manufacture
   if (!config) throw new Error(errorMessages[aiType]);
 
   const result: BaseConfig = {
-    model: config?.model ?? "",
-    apiKey: config?.apiKey ?? "",
-    manufacturer: config?.manufacturer ?? "",
+    model: config.model,
+    apiKey: config.apiKey,
+    manufacturer: config.manufacturer ?? "",
   };
+  if (!result.model) throw new Error(`${errorMessages[aiType]}：model 未配置`);
+  if (!result.apiKey) throw new Error(`${errorMessages[aiType]}：apiKey 未配置`);
 
   if (needBaseURL.includes(aiType)) {
     return { ...result, baseURL: config.baseUrl } as ResDataMap[T];

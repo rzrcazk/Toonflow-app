@@ -39,11 +39,12 @@ export default router.post(
   async (req, res) => {
     const { scriptId, projectId, prompt, uploadData, model, duration, resolution, audio, mode, trackId } = req.body;
     let modeData = [];
-    if (Array.isArray(mode)) {
-    } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
+    if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
       try {
         modeData = JSON.parse(mode);
-      } catch (e) { }
+      } catch (e) {
+        console.warn("[generateVideo] mode 字段解析失败，按空处理:", (e as Error).message);
+      }
     }
     //获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
@@ -74,14 +75,14 @@ export default router.post(
       }),
     );
     //新增
-    const [videoId] = await u.db("o_video").insert({
-      filePath: videoPath,
-      time: Date.now(),
+    const result = await u.db("o_video").insert({
+      videoPath: videoPath,
       state: "生成中",
       scriptId,
       projectId,
       videoTrackId: trackId,
-    });
+    }).returning('id');
+    const videoId = result[0]?.id ?? result[0];
     res.status(200).send(success(videoId));
     (async () => {
       try {

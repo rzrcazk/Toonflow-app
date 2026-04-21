@@ -22,22 +22,22 @@ export default router.post(
   async (req, res) => {
     const { projectId, data } = req.body;
     const totalNovelId = [];
-    const getLastChapterIndex = await u.db("o_novel").where("projectId", projectId).select("chapterIndex").orderBy("chapterIndex", "desc").first();
-    let lastChapterIndex = 0;
-    if (getLastChapterIndex) {
-      lastChapterIndex = getLastChapterIndex.chapterIndex!;
+    const getLastOrder = await u.db("o_novel").where("projectId", projectId).select("order").orderBy("order", "desc").first();
+    let lastOrder = 0;
+    if (getLastOrder) {
+      lastOrder = getLastOrder.order!;
     }
     for (const item of data) {
-      const [id] = await u.db("o_novel").insert({
+      const result = await u.db("o_novel").insert({
         projectId,
-        chapterIndex: ++lastChapterIndex,
+        order: ++lastOrder,
         reel: item.reel,
         chapter: item.chapter,
         chapterData: item.chapterData,
         createTime: Date.now(),
         eventState: 0,
-      });
-      totalNovelId.push(id);
+      }).returning("id");
+      totalNovelId.push(result[0].id);
     }
     const chapterAllList = await u.db("o_novel").where("projectId", projectId).whereIn("id", totalNovelId);
     const novelClass = new u.cleanNovel();

@@ -38,15 +38,16 @@ export default async function taskRecord(
     }
   }
 
-  const [id] = await db("o_tasks").insert({
+  const result = await db("o_tasks").insert({
     projectId,
     taskClass,
     relatedObjects: opteorContent,
     model: modelName,
     describe,
     state: taskStateMap[0],
-    startTime: Date.now(),
-  });
+    startTime: new Date(),
+  }).returning('id');
+  const id = result[0]?.id ?? result[0];
 
   /** 任务成功时调用 done(1)，失败时调用 done(-1, '原因') */
   return async function done(state: 1 | -1, reason?: string) {

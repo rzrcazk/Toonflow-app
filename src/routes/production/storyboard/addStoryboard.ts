@@ -26,13 +26,12 @@ export default router.post(
   }),
   async (req, res) => {
     const { prompt, duration, state, src, scriptId, projectId, videoDesc, shouldGenerateImage } = req.body;
-    const trackId = Date.now()
-    await u.db("o_videoTrack").insert({
-      id: trackId,
+    const trackResult = await u.db("o_videoTrack").insert({
       scriptId: scriptId,
       projectId,
-    });
-    const [id] = await u.db("o_storyboard").insert({
+    }).returning("id");
+    const trackId = trackResult[0]?.id ?? trackResult[0];
+    const result = await u.db("o_storyboard").insert({
       prompt,
       duration,
       state,
@@ -42,7 +41,8 @@ export default router.post(
       shouldGenerateImage: src ? 1 : 0,
       scriptId: scriptId,
       projectId: projectId,
-    });
+    }).returning('id');
+    const id = result[0]?.id ?? result[0];
     return res.status(200).send(success({ id }));
   },
 );

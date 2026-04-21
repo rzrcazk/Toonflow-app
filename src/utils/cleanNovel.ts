@@ -41,7 +41,7 @@ class CleanNovel {
             role: "user",
             content:
               "请根据以下小说章节数：" +
-              novel.chapterIndex +
+              novel.order +
               "小说章节券：" +
               novel.reel +
               "小说章节名称：" +

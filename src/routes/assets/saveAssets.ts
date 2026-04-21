@@ -29,12 +29,14 @@ export default router.post(
       // 写入文件
       await u.oss.writeFile(savePath, Buffer.from(realBase64, "base64"));
       // 插入图片表
-      const [idData] = await u.db("o_image").insert({
+      const result = await u.db("o_image").insert({
+        projectId,
         assetsId: id,
         filePath: savePath,
         type: type,
         state: "已完成",
-      });
+      }).returning('id');
+      const idData = result[0]?.id ?? result[0];
       // 更新资产表图片为新图片
       await u
         .db("o_assets")

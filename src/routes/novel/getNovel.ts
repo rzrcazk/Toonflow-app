@@ -20,13 +20,13 @@ export default router.post(
     const data = await u
       .db("o_novel")
       .where("projectId", projectId)
-      .select("id", "chapterIndex as index", "reel", "chapter", "chapterData", "event", "eventState", "errorReason")
+      .select("id", "order as index", "reel", "chapter", "chapterData", "event", "eventState", "errorReason")
       .andWhere((qb) => {
         if (search) {
           qb.where("chapter", "like", `%${search}%`);
         }
       })
-      .orderBy("chapterIndex", "asc")
+      .orderBy("order", "asc")
       .limit(limit)
       .offset(offset);
 

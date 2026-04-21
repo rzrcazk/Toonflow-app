@@ -24,6 +24,8 @@ export default router.post(
       list.map(async (item) => ({
         ...item,
         filePath: item.filePath ? await u.oss.getFileUrl(item.filePath) : "",
+        // 将 created_at 转换为时间戳数字格式，并改名为 createTime
+        createTime: item.created_at ? new Date(item.created_at).getTime() : null,
       })),
     );
     //拿到本地片尾视频并插入到data中
@@ -47,7 +49,7 @@ export default router.post(
         const videoList = await Promise.all(
           videoItems.map(async (v) => ({
             id: v.id,
-            filePath: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
+            filePath: v.videoPath ? await u.oss.getFileUrl(v.videoPath) : "",
             videoTrackId: v.videoTrackId,
           })),
         );

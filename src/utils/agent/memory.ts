@@ -88,9 +88,11 @@ class Memory {
     const id = uuidv4();
     const embedding = await getEmbedding(content);
     const isolationKey = this.isolationKey;
+    const agentId = this.agentType;
 
     await u.db("memories").insert({
       id,
+      agentId,
       isolationKey,
       type: "message",
       role,
@@ -116,6 +118,7 @@ class Memory {
 
       await u.db("memories").insert({
         id: summaryId,
+        agentId,
         isolationKey,
         type: "summary",
         content: summaryContent,

@@ -21,9 +21,11 @@ export default router.post(
       dataList.map(async (data, index) => {
         const vendorData = await u.vendor.getVendor(data.id!);
         const models = modelList[index];
+        // 当 type=video 时返回所有类型（因为生成视频提示词需要文本 LLM，生成视频需要视频模型）
+        // 用户自己根据需求选择合适的模型
         const filtered =
-          type === "all"
-            ? models.filter((item: { type: string }) => item.type !== "video")
+          type === "all" || type === "video"
+            ? models
             : models.filter((item: { type: string }) => item.type === type);
         return filtered.map((item: { name: string; modelName: string; type: string }) => ({
           id: data.id,

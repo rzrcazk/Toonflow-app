@@ -55,7 +55,8 @@ export default router.post(
       const url = await u.oss.getSmallImageUrl(savePath);
       return res.status(200).send(success({ url }));
     } catch (e) {
-      res.status(400).send(error(u.error(e).message))
+      console.error("[generateFlowImage] 生成失败:", e);
+      res.status(400).send(error(u.error(e).message));
     }
 
   },

@@ -39,7 +39,9 @@ export default router.post(
     }
     const savePath = `/${projectId}/imageFlow/${scriptId}/${uuid()}.${ext}`;
 
-    await u.oss.writeFile(savePath, Buffer.from(base64Data.match(/base64,([A-Za-z0-9+/=]+)/)[1] ?? "", "base64"));
+    const base64Match = base64Data.match(/base64,([A-Za-z0-9+/=]+)/);
+    if (!base64Match) throw new Error("无效的 base64 数据格式");
+    await u.oss.writeFile(savePath, Buffer.from(base64Match[1], "base64"));
     const url = await u.oss.getSmallImageUrl(savePath);
     res.status(200).send(success(url));
   },

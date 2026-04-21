@@ -26,7 +26,7 @@ export default router.post(
     const { data, scriptId, projectId } = req.body;
     if (!data.length) return res.status(400).send({ success: false, message: "数据不能为空" });
     for (const item of data) {
-      const [id] = await u.db("o_storyboard").insert({
+      const result = await u.db("o_storyboard").insert({
         prompt: item.prompt,
         duration: String(item.duration),
         state: item.state,
@@ -35,12 +35,12 @@ export default router.post(
         track: item.track,
         videoDesc: item.videoDesc,
         shouldGenerateImage: item.shouldGenerateImage,
-        createTime: Date.now(),
-      });
+      }).returning('id');
+      const id = result[0]?.id ?? result[0];
       if (item.associateAssetsIds?.length) {
         await u.db("o_assets2Storyboard").insert(
           item.associateAssetsIds.map((assetId: number) => ({
-            assetId,
+            assetsId: assetId,
             storyboardId: id,
           })),
         );
@@ -77,14 +77,12 @@ export default router.post(
         await u.db("o_videoTrack").where("id", trackId).update({ duration: trackDuration });
       } else {
         // 不存在，新建videoTrack
-        const newTrackId = Date.now()
-        await u.db("o_videoTrack").insert({
-          id: newTrackId,
+        const trackResult = await u.db("o_videoTrack").insert({
           scriptId,
           projectId,
           duration: trackDuration,
-        });
-        trackId = newTrackId;
+        }).returning("id");
+        trackId = trackResult[0]?.id ?? trackResult[0];
       }
 
       await u.db("o_storyboard").whereIn("id", storyboardIds).update({ trackId });
@@ -93,7 +91,7 @@ export default router.post(
     const storyboardData = await Promise.all(
       lastStoryboard.map(async (i) => {
         return {
-          associateAssetsIds: await u.db("o_assets2Storyboard").where("storyboardId", i.id).orderBy("rowid").select("assetId").pluck("assetId"),
+          associateAssetsIds: await u.db("o_assets2Storyboard").where("storyboardId", i.id).orderBy("id").select("assetsId").pluck("assetsId"),
           src: i.filePath ? await u.oss.getSmallImageUrl(i.filePath) : "",
           id: i.id,
           trackId: i.trackId,

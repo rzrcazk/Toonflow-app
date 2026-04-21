@@ -72,7 +72,7 @@ export default router.post(
           filePath: item.src,
         });
       } else {
-        const [assetsId] = await u.db("o_assets").insert({
+        const assetResult = await u.db("o_assets").insert({
           prompt: item.prompt,
           assetsId: id,
           type: "audio",
@@ -80,13 +80,16 @@ export default router.post(
           describe: item.describe,
           name: item.name,
           startTime: Date.now(),
-        });
-        const [imageId] = await u.db("o_image").insert({
+        }).returning('id');
+        const assetsId = assetResult[0]?.id ?? assetResult[0];
+        const result = await u.db("o_image").insert({
+          projectId,
           filePath: item.src,
           type: "audio",
           assetsId,
           state: "已完成",
-        });
+        }).returning('id');
+        const imageId = result[0]?.id ?? result[0];
         await u.db("o_assets").where("id", assetsId).update({
           imageId,
         });

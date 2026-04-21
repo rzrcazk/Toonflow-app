@@ -36,10 +36,10 @@ export default router.post(
       return res.status(200).send(success({ list: [], total: 0 }));
     }
 
-    // 分页查询：每个事件对应多个 chapterIndex，用 GROUP_CONCAT 聚合
+    // 分页查询：每个事件对应多个章节 order，用 GROUP_CONCAT 聚合
     const rows = await baseQuery
       .clone()
-      .select("e.id", "e.name as eventName", "e.detail", "e.createTime", db.raw("GROUP_CONCAT(n.chapterIndex) as chapterIndexes"))
+      .select("e.id", "e.name as eventName", "e.detail", "e.createTime", db.raw("GROUP_CONCAT(n.order) as chapterIndexes"))
       .groupBy("e.id")
       .limit(limit)
       .offset(offset);

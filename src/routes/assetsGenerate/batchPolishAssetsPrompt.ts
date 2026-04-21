@@ -122,17 +122,19 @@ export default router.post(
 
           await u.db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "已完成" });
         } catch (e: any) {
+          const errorMsg = u.error(e).message;
+          console.error(`[batchPolishAssetsPrompt] 优化失败 assetsId=${item.assetsId}:`, errorMsg);
           await u
             .db("o_assets")
             .where("id", item.assetsId)
-            .update({ promptState: "失败", promptErrorReason: u.error(e).message });
+            .update({ promptState: "失败", promptErrorReason: errorMsg });
         }
       }),
     );
 
     // 后台执行，不等待结果
     Promise.all(tasks).catch((err: any) => {
-      res.status(500).send(error(err));
+      console.error("[batchPolishAssetsPrompt] 批量任务意外失败:", err);
     });
 
     return res.status(200).send(success({ total: items.length }));

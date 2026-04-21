@@ -83,11 +83,13 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
   // 2. 逐条插入 o_image 占位记录，收集 imageId 列表
   const totalNovelId: number[] = [];
   for (const item of items) {
-    const [imageId] = await u.db("o_image").insert({
+    const result = await u.db("o_image").insert({
+      projectId,
       type: item.type,
       state: "生成中",
       assetsId: item.id,
-    });
+    }).returning('id');
+    const imageId = result[0]?.id ?? result[0];
     await u.db("o_assets").where("id", item.id).update({ imageId });
     totalNovelId.push(imageId);
   }
@@ -130,9 +132,10 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         aiImage.save(imagePath);
 
         const imageData = await u.db("o_image").where("id", imageId).select("*").first();
-        console.log("%c Line:133 🥒 imageData", "background:#465975", imageData);
-        if (!imageData) return res.status(500).send("资产已被删除");
-        if (!imageData) return;
+        if (!imageData) {
+          console.error(`[batchGenerateImageAssets] imageId=${imageId} 的图片记录已被删除`);
+          return;
+        }
         if (imageData.state === "生成失败") return;
         await u
           .db("o_image")
@@ -147,16 +150,20 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
 
         await u.db("o_assets").where("id", item.id).update({ imageId });
       } catch (e: any) {
+        const errorMsg = u.error(e).message;
+        console.error(`[batchGenerateImageAssets] 生成失败 imageId=${imageId}:`, errorMsg);
         await u
           .db("o_image")
           .where("id", imageId)
-          .update({ state: "生成失败", errorReason: u.error(e).message });
+          .update({ state: "生成失败", errorReason: errorMsg });
       }
     }),
   );
 
   // 后台执行，不等待结果
-  Promise.all(tasks).catch(() => {});
+  Promise.all(tasks).catch((err) => {
+    console.error("[batchGenerateImageAssets] 批量任务意外失败:", err);
+  });
 
   return res.status(200).send(success({ total: items.length }));
 });

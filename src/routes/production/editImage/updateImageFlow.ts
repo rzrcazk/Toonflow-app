@@ -31,7 +31,7 @@ export default router.post(
       .db("o_imageFlow")
       .where("id", flowId)
       .update({
-        flowData: JSON.stringify({ edges, nodes }),
+        data: JSON.stringify({ edges, nodes }),
       });
     return res.status(200).send(success());
   },

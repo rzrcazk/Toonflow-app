@@ -1,13 +1,21 @@
-// @db-hash 1803b0077100d1f9d0300dc776d9b82a
+// @db-hash 10a9181153734266de678165f01d7089
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
   'agentId': string;
   'content': string;
   'created_at'?: Date | null;
-  'id'?: number;
+  'createTime'?: string | null;
+  'embedding'?: string | null;
+  'id': string;
+  'isolationKey'?: string | null;
   'metadata'?: any | null;
+  'name'?: string | null;
+  'relatedMessageIds'?: string | null;
+  'role'?: string | null;
   'score'?: string | null;
+  'summarized'?: boolean | null;
+  'type'?: string | null;
 }
 export interface o_agentDeploy {
   'created_at'?: Date | null;
@@ -22,7 +30,7 @@ export interface o_agentDeploy {
   'temperature'?: number | null;
   'type'?: number | null;
   'updated_at'?: Date | null;
-  'vendorId'?: number | null;
+  'vendorId'?: string | null;
 }
 export interface o_agentWorkData {
   'createTime'?: Date | null;
@@ -42,15 +50,20 @@ export interface o_artStyle {
   'updated_at'?: Date | null;
 }
 export interface o_assets {
+  'assetsId'?: number | null;
   'created_at'?: Date | null;
   'describe'?: string | null;
+  'flowId'?: number | null;
   'id'?: number;
+  'imageId'?: number | null;
   'imagePath'?: string | null;
   'name': string;
   'projectId': number;
   'prompt'?: string | null;
   'promptErrorReason'?: string | null;
   'promptState'?: string | null;
+  'remark'?: string | null;
+  'startTime'?: string | null;
   'type': string;
   'updated_at'?: Date | null;
 }
@@ -61,7 +74,8 @@ export interface o_assets2Storyboard {
   'storyboardId': number;
 }
 export interface o_assetsRole2Audio {
-  'assetsId': number;
+  'assetsAudioId'?: number | null;
+  'assetsRoleId': number;
   'audioPath'?: string | null;
   'created_at'?: Date | null;
   'id'?: number;
@@ -81,17 +95,22 @@ export interface o_eventChapter {
   'eventId': number;
   'id'?: number;
   'name'?: string | null;
+  'novelId'?: number | null;
   'order'?: number | null;
   'updated_at'?: Date | null;
 }
 export interface o_image {
+  'assetsId'?: number | null;
   'created_at'?: Date | null;
   'errorReason'?: string | null;
+  'filePath'?: string | null;
   'height'?: number | null;
   'id'?: number;
   'imagePath'?: string | null;
-  'projectId': number;
+  'model'?: string | null;
+  'projectId'?: number | null;
   'prompt'?: string | null;
+  'resolution'?: string | null;
   'state'?: string | null;
   'type'?: string | null;
   'updated_at'?: Date | null;
@@ -100,6 +119,7 @@ export interface o_image {
 export interface o_imageFlow {
   'created_at'?: Date | null;
   'data'?: string | null;
+  'flowData'?: string | null;
   'flowType'?: string | null;
   'id'?: number;
   'imageId': number;
@@ -113,9 +133,14 @@ export interface o_modelPrompt {
   'updated_at'?: Date | null;
 }
 export interface o_novel {
+  'chapter'?: string | null;
+  'chapterData'?: string | null;
+  'chapterIndex'?: number | null;
   'content'?: string | null;
   'created_at'?: Date | null;
+  'createTime'?: string | null;
   'errorReason'?: string | null;
+  'event'?: string | null;
   'eventState'?: number | null;
   'id'?: number;
   'level'?: number | null;
@@ -123,17 +148,26 @@ export interface o_novel {
   'order'?: number | null;
   'parentId'?: number | null;
   'projectId': number;
+  'reel'?: string | null;
   'updated_at'?: Date | null;
 }
 export interface o_project {
-  'artStyleId'?: number | null;
+  'artStyle'?: string | null;
   'created_at'?: Date | null;
-  'customPrompt'?: string | null;
-  'describe'?: string | null;
+  'createTime'?: string | null;
+  'directorManual'?: string | null;
   'id'?: number;
+  'imageModel'?: string | null;
+  'imageQuality'?: string | null;
+  'intro'?: string | null;
+  'mode'?: string | null;
   'name': string;
-  'novelId'?: number | null;
+  'projectType'?: string | null;
+  'type'?: string | null;
   'updated_at'?: Date | null;
+  'userId'?: string | null;
+  'videoModel'?: string | null;
+  'videoRatio'?: string | null;
 }
 export interface o_prompt {
   'created_at'?: Date | null;
@@ -151,14 +185,22 @@ export interface o_script {
   'extractState'?: number | null;
   'id'?: number;
   'name'?: string | null;
-  'novelId': number;
+  'novelId'?: number | null;
   'order'?: number | null;
+  'projectId'?: number | null;
   'updated_at'?: Date | null;
 }
 export interface o_scriptAssets {
   'assetsId': number;
   'created_at'?: Date | null;
   'id'?: number;
+  'scriptId': number;
+}
+export interface o_scriptNovelMap {
+  'created_at'?: Date | null;
+  'id'?: number;
+  'novelId': number;
+  'order'?: number | null;
   'scriptId': number;
 }
 export interface o_setting {
@@ -187,22 +229,33 @@ export interface o_storyboard {
   'content'?: string | null;
   'created_at'?: Date | null;
   'duration'?: number | null;
+  'filePath'?: string | null;
+  'flowId'?: number | null;
   'id'?: number;
   'imageId'?: number | null;
+  'index'?: number | null;
+  'projectId'?: number | null;
   'prompt'?: string | null;
   'reason'?: string | null;
   'scriptId': number;
+  'shouldGenerateImage'?: number | null;
   'state'?: string | null;
   'track'?: string | null;
+  'trackId'?: number | null;
   'updated_at'?: Date | null;
+  'videoDesc'?: string | null;
 }
 export interface o_tasks {
   'created_at'?: Date | null;
-  'errorReason'?: string | null;
+  'describe'?: string | null;
   'id'?: number;
-  'relatedId'?: number | null;
+  'model'?: string | null;
+  'projectId': number;
+  'reason'?: string | null;
+  'relatedObjects'?: string | null;
+  'startTime'?: Date | null;
   'state'?: string | null;
-  'type': string;
+  'taskClass': string;
   'updated_at'?: Date | null;
 }
 export interface o_user {
@@ -237,14 +290,19 @@ export interface o_video {
   'storyboardId'?: number | null;
   'updated_at'?: Date | null;
   'videoPath'?: string | null;
+  'videoTrackId'?: number | null;
   'width'?: number | null;
 }
 export interface o_videoTrack {
   'created_at'?: Date | null;
+  'duration'?: number | null;
   'id'?: number;
   'order'?: number | null;
-  'trackIndex': number;
-  'videoId': number;
+  'projectId'?: number | null;
+  'prompt'?: string | null;
+  'scriptId'?: number | null;
+  'trackIndex'?: number | null;
+  'videoId'?: number | null;
 }
 
 export interface DB {
@@ -265,6 +323,7 @@ export interface DB {
   "o_prompt": o_prompt;
   "o_script": o_script;
   "o_scriptAssets": o_scriptAssets;
+  "o_scriptNovelMap": o_scriptNovelMap;
   "o_setting": o_setting;
   "o_skillAttribution": o_skillAttribution;
   "o_skillList": o_skillList;

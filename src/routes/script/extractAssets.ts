@@ -98,7 +98,6 @@ export default router.post(
             type: asset.type,
             describe: asset.desc,
             projectId: projectId,
-            startTime: Date.now(),
           })),
         );
       }
@@ -108,31 +107,31 @@ export default router.post(
       const nameToId = new Map(allAssets.map((a) => [a.name, a.id]));
 
       // 收集所有资产与剧本的关联关系
-      const scriptAssetRows: { scriptId: number; assetId: number }[] = [];
+      const scriptAssetRows: { scriptId: number; assetsId: number }[] = [];
 
       // 新资产的关联
       for (const asset of newAssets) {
-        const assetId = nameToId.get(asset.name);
-        if (assetId) {
+        const assetsId = nameToId.get(asset.name);
+        if (assetsId) {
           for (const sid of asset.scriptIds) {
-            scriptAssetRows.push({ scriptId: sid, assetId });
+            scriptAssetRows.push({ scriptId: sid, assetsId });
           }
         }
       }
 
       // 已有资产的关联
       for (const ref of existingRefs) {
-        const assetId = nameToId.get(ref.name);
-        if (assetId) {
+        const assetsId = nameToId.get(ref.name);
+        if (assetsId) {
           for (const sid of ref.scriptIds) {
-            scriptAssetRows.push({ scriptId: sid, assetId });
+            scriptAssetRows.push({ scriptId: sid, assetsId });
           }
         }
       }
 
       // 去重：相同 scriptId + assetId 只保留一条
       const uniqueRows = [
-        ...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetId}`, r])).values(),
+        ...new Map(scriptAssetRows.map((r) => [`${r.scriptId}_${r.assetsId}`, r])).values(),
       ];
 
 
@@ -160,9 +159,9 @@ export default router.post(
               errors.push({ scriptId, error: "未找到对应剧本" });
               await u.db("o_script").where("id", scriptId).update({ extractState: -1, errorReason: "未找到对应剧本" });
             } else {
-              // 查看状态是否为等待提取，仅对等待提取进行生成
+              // 查看状态是否为待提取 (0) 或生成中 (2)，仅对这些状态进行生成
               const item = await u.db("o_script").where("id", scriptId).select("extractState").first();
-              if (item?.extractState == 2) {
+              if (item?.extractState == 0 || item?.extractState == 2) {
                 validScripts.push({ id: scriptId, script });
               }
             }

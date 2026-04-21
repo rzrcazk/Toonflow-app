@@ -13,16 +13,12 @@ export default router.post(
   }),
   async (req, res) => {
     const { projectId, scriptId, duration } = req.body;
-    const data = await u.db("o_project").where("id", projectId).first();
-    const video = data?.videoModel?.split(":");
-    const vemdor = await u.vendor.getModelList(video?.[0]!);
-    const trackId = Date.now()
-    await u.db("o_videoTrack").insert({
-      id: trackId,
+    const trackResult = await u.db("o_videoTrack").insert({
       projectId,
       scriptId,
       duration,
-    });
+    }).returning("id");
+    const trackId = trackResult[0]?.id ?? trackResult[0];
     res.status(200).send(success(trackId));
   },
 );

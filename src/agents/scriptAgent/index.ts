@@ -51,7 +51,7 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
 
-  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex");
+  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("order");
 
   const projectInfo = [
     "## 项目信息",
@@ -189,7 +189,7 @@ function createSubAgent(parentCtx: AgentContext) {
         "\n",
       );
 
-      const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("chapterIndex");
+      const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("order");
 
       const formatPrompt = `\n你必须使用如下XML格式写入工作区：\nXML不得添加任何额外标签<scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem><scriptItem name="剧本名称">剧本内容</scriptItem>`;
 

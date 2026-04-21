@@ -26,15 +26,21 @@ export default router.post(
       .orderBy("createTime", "asc")
       .select("id", "role", "name", "content", "createTime");
 
-    const history = rows.map((row) => ({
-      id: row.id,
-      role: normalizeRole(row.role),
-      name: row.name ?? undefined,
-      status: "complete",
-      datetime: new Date(row.createTime).toISOString(),
-      content: [{ type: "markdown", status: "complete", data: row.content }],
-      createTime: row.createTime,
-    }));
+    const history = rows.map((row) => {
+      // PostgreSQL bigint 返回的是字符串，需要转为数字
+      const createTime = typeof row.createTime === "string" ? Number(row.createTime) : (row.createTime as number);
+      const datetime = new Date(createTime).toISOString();
+
+      return {
+        id: row.id,
+        role: normalizeRole(row.role),
+        name: row.name ?? undefined,
+        status: "complete",
+        datetime,
+        content: [{ type: "markdown", status: "complete", data: row.content }],
+        createTime,
+      };
+    });
 
     res.status(200).send(success(history));
   },

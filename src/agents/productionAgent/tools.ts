@@ -115,9 +115,10 @@ export default (toolCpnfig: ToolConfig) => {
           await u.db("o_assets").where("id", deriveAsset.id).update(data);
           thinking.appendText(`已更新衍生资产，ID: ${deriveAsset.id}\n`);
         } else {
-          const [insertedId] = await u.db("o_assets").insert(data);
+          const result = await u.db("o_assets").insert(data).returning('id');
+          const insertedId = result[0]?.id ?? result[0];
           data.id = insertedId;
-          await u.db("o_scriptAssets").insert({ scriptId, assetId: insertedId });
+          await u.db("o_scriptAssets").insert({ scriptId, assetsId: insertedId });
           thinking.appendText(`已新增衍生资产，ID: ${insertedId}\n`);
         }
         const res = await new Promise((resolve) => socket.emit("addDeriveAsset", data, (res: any) => resolve(res)));
@@ -136,7 +137,7 @@ export default (toolCpnfig: ToolConfig) => {
         const thinking = msg.thinking("正在操作资产...");
         const { scriptId } = resTool.data;
         await u.db("o_assets").where("id", id).del();
-        await u.db("o_scriptAssets").where({ scriptId, assetId: id }).del();
+        await u.db("o_scriptAssets").where({ scriptId, assetsId: id }).del();
         thinking.appendText(`已删除衍生资产，ID: ${id}\n`);
         const res = await new Promise((resolve) => socket.emit("delDeriveAsset", { assetsId, id }, (res: any) => resolve(res)));
         thinking.updateTitle("资产操作完成");
@@ -158,7 +159,9 @@ export default (toolCpnfig: ToolConfig) => {
             thinking.complete();
           })
           .catch((e) => {
-            thinking.appendText("衍生资产生成失败:\n" + u.error(e).message);
+            const errorMsg = u.error(e).message;
+            console.error("[generate_deriveAsset] 衍生资产生成失败:", errorMsg);
+            thinking.appendText("衍生资产生成失败:\n" + errorMsg);
             thinking.updateTitle("衍生资产生成失败");
             thinking.complete();
           });
@@ -180,7 +183,9 @@ export default (toolCpnfig: ToolConfig) => {
             thinking.complete();
           })
           .catch((e) => {
-            thinking.appendText("分镜生成失败:\n" + u.error(e).message);
+            const errorMsg = u.error(e).message;
+            console.error("[generate_storyboard] 分镜生成失败:", errorMsg);
+            thinking.appendText("分镜生成失败:\n" + errorMsg);
             thinking.updateTitle("分镜生成失败");
             thinking.complete();
           });

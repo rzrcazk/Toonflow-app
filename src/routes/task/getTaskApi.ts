@@ -2,7 +2,8 @@ import express from "express";
 import u from "@/utils";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { number, z } from "zod";
+import { z } from "zod";
+
 const router = express.Router();
 export default router.post(
   "/",
@@ -30,7 +31,7 @@ export default router.post(
           qb.andWhere("o_tasks.projectId", projectId);
         }
       })
-      .select("o_tasks.*", "o_project.* ")
+      .select("o_tasks.*", "o_project.name as projectName")
       .offset(offset)
       .limit(limit)
       .orderBy("o_tasks.id", "desc");
@@ -49,6 +50,7 @@ export default router.post(
       })
       .count("* as total")
       .first()) as any;
+
     res.status(200).send(success({ data, total: totalQuery?.total }));
   },
 );

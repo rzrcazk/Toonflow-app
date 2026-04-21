@@ -24,23 +24,26 @@ export default router.post(
   async (req, res) => {
     const { projectType, name, intro, type, directorManual, artStyle, videoRatio, imageModel, videoModel, imageQuality, mode } = req.body;
 
-    await u.db("o_project").insert({
-      id: Date.now(),
-      projectType,
-      name,
-      intro,
-      type,
-      artStyle,
-      videoRatio,
-      directorManual,
-      userId: 1,
-      imageModel,
-      videoModel,
-      createTime: Date.now(),
-      imageQuality,
-      mode,
-    });
+    const result = await u.db("o_project")
+      .insert({
+        projectType,
+        name,
+        intro,
+        type,
+        artStyle,
+        videoRatio,
+        directorManual,
+        userId: 1,
+        imageModel,
+        videoModel,
+        createTime: BigInt(Date.now()),
+        imageQuality,
+        mode,
+      })
+      .returning("id");
 
-    res.status(200).send(success({ message: "新增项目成功" }));
+    const id = result[0]?.id || result[0];
+
+    res.status(200).send(success({ id }, "新增项目成功"));
   },
 );

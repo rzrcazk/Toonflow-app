@@ -16,7 +16,12 @@ export default router.post(
 
     const models = await u.db("o_vendorConfig").where("id", id).first("models");
     if (models?.models) {
-      const existingModels = JSON.parse(models.models);
+      let existingModels: any[];
+      try {
+        existingModels = JSON.parse(models.models);
+      } catch {
+        throw new Error(`供应商 ${id} 的 models 数据损坏`);
+      }
       if (!existingModels.some((model: any) => model.modelName === modelName)) {
         return res.status(400).send(error("基本模型不允许删除"));
       }

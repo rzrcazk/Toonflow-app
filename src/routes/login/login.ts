@@ -23,22 +23,22 @@ export default router.post(
   async (req, res) => {
     const { username, password } = req.body;
 
-    const data = await u.db("o_user").where("name", "=", username).first();
+    const data = await u.db("o_user").where("username", "=", username).first();
     if (!data) return res.status(400).send(error("登录失败"));
 
-    if (data!.password == password && data!.name == username) {
+    if (data!.password == password && data!.username == username) {
       const tokenData = await u.db("o_setting").where("key", "tokenKey").first();
       if (!tokenData) return res.status(400).send(error("未找到tokenKey"));
       const token = setToken(
         {
           id: data!.id,
-          name: data!.name,
+          name: data!.username,
         },
         "180Days",
         tokenData?.value as string,
       );
 
-      return res.status(200).send(success({ token: "Bearer " + token, name: data!.name, id: data!.id }, "登录成功"));
+      return res.status(200).send(success({ token: "Bearer " + token, name: data!.username, id: data!.id }, "登录成功"));
     } else {
       return res.status(400).send(error("用户名或密码错误"));
     }

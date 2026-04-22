@@ -30,6 +30,12 @@ if (DB_TYPE === "pg") {
       min: 2,
       max: 10,
     },
+    // SQL 调试日志
+    debug: process.env.SQL_DEBUG === "1"
+      ? (method: string, query: string, bindings?: any) => {
+          console.log(`[SQL_DEBUG] ${method}: ${query}`, bindings ? JSON.stringify(bindings) : "");
+        }
+      : undefined,
   };
 
   console.log("使用 PostgreSQL 数据库:", pgConfig.connection.database);
@@ -56,6 +62,12 @@ if (DB_TYPE === "pg") {
       filename: dbPath,
     },
     useNullAsDefault: true,
+    // SQL 调试日志
+    debug: process.env.SQL_DEBUG === "1"
+      ? (method: string, query: string, bindings?: any) => {
+          console.log(`[SQL_DEBUG] ${method}: ${query}`, bindings ? JSON.stringify(bindings) : "");
+        }
+      : undefined,
   });
 }
 

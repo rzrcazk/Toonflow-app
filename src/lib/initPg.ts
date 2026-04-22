@@ -33,6 +33,7 @@ export async function initPgSchema(knex: Knex): Promise<void> {
   await createVideoTrackTable(knex);
   await createTasksTable(knex);
   await createMemoriesTable(knex);
+  await createAgentWorkDataTable(knex);
   await createUsersTable(knex);
   await createScriptNovelMapTable(knex);
 
@@ -388,6 +389,18 @@ async function createScriptNovelMapTable(knex: Knex) {
     table.integer("novelId").notNullable();
     table.integer("order").defaultTo(0);
     table.timestamp("created_at").defaultTo(knex.fn.now());
+  });
+}
+
+async function createAgentWorkDataTable(knex: Knex) {
+  await knex.schema.createTableIfNotExists("o_agentWorkData", (table) => {
+    table.increments("id").primary();
+    table.integer("projectId").nullable();
+    table.integer("episodesId").nullable();
+    table.string("key").nullable();
+    table.text("data").nullable();
+    table.timestamp("createTime").defaultTo(knex.fn.now());
+    table.timestamp("updateTime").defaultTo(knex.fn.now());
   });
 }
 

@@ -164,14 +164,28 @@ class AiText {
   }
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
     const config = await getModelConfig(this.AiType);
+    const modelName = await resolveModelName(this.AiType);
 
-    return generateText({
+    // AI 调用详细日志（通过 AI_DEBUG=1 环境变量启用）
+    const enableDebug = process.env.AI_DEBUG === "1";
+    if (enableDebug) {
+      console.log(`[AI_DEBUG] Text invoke - Model: ${modelName}`);
+      console.log(`[AI_DEBUG] Input:`, JSON.stringify({ system: input.system, messages: input.messages }, null, 2));
+    }
+
+    const result = await generateText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
       ...(config?.temperature && { temperature: config?.temperature }),
       ...(config?.maxOutputTokens && { maxOutputTokens: config?.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
+
+    if (enableDebug) {
+      console.log(`[AI_DEBUG] Output:`, JSON.stringify({ text: result.text, usage: result.usage }, null, 2));
+    }
+
+    return result;
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
     const config = await getModelConfig(this.AiType);

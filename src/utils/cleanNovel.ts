@@ -85,6 +85,36 @@ class CleanNovel {
 
     await Promise.all(workers);
 
+    // 保存事件数据到 o_event 和 o_eventChapter 表
+    for (const event of totalEvent) {
+      if (event.event) {
+        // 获取章节信息用于设置 order
+        const chapter = allChapters.find((c) => c.id === event.id);
+
+        // 插入 o_event - PostgreSQL 需要使用 returning 获取插入后的 ID
+        const insertResult = await u.db("o_event")
+          .insert({
+            novelId: event.id,
+            name: event.event.slice(0, 100) || "事件",
+            content: event.event,
+            order: chapter?.order || 0,
+          })
+          .returning("id");
+        const eventId = insertResult[0]?.id;
+
+        // 插入 o_eventChapter
+        if (eventId) {
+          await u.db("o_eventChapter").insert({
+            eventId: eventId,
+            novelId: event.id,
+            name: event.event.slice(0, 100) || "事件章节",
+            content: event.event,
+            order: chapter?.order || 0,
+          });
+        }
+      }
+    }
+
     return totalEvent;
   }
 }

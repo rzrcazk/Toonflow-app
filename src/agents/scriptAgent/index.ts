@@ -51,7 +51,11 @@ export async function runDecisionAI(ctx: AgentContext) {
 
   const projectData = await u.db("o_project").where("id", resTool.data.projectId).first();
 
-  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("order");
+  const novelData = await u.db("o_novel").where("projectId", resTool.data.projectId).select("order", "chapter", "chapterData");
+
+  const chapterTexts = novelData
+    .map((n: any) => `第${n.order}章「${n.chapter}」:\n${n.chapterData ?? ""}`)
+    .join("\n\n");
 
   const projectInfo = [
     "## 项目信息",
@@ -61,7 +65,10 @@ export async function runDecisionAI(ctx: AgentContext) {
     `目标改编影视视觉手册|画风：${projectData?.artStyle ?? "无"}`,
     `目标改编视频画幅：${projectData?.videoRatio ?? "16:9"}`,
     `章节数量：${novelData.length}章`,
-  ].join("\n");
+    chapterTexts ? `\n## 小说原文\n${chapterTexts}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const { fullStream } = await u.Ai.Text("scriptAgent:decisionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
     messages: [

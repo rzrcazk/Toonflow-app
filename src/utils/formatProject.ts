@@ -9,6 +9,7 @@ const artStyleMap: Record<string, string> = {
   "2D_mature_urban_romance": "2D 成熟都市浪漫",
   "realpeople_ancient_chinese": "真人古风",
   "realpeople_urban_modern": "真人都市现代",
+  "animal_documentary": "动物科普写实纪录片",
 };
 
 /**

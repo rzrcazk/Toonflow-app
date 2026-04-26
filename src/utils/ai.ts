@@ -20,7 +20,8 @@ type AiType =
   | "productionAgent:directorPlanAgent"
   | "productionAgent:storyboardGenAgent"
   | "productionAgent:storyboardPanelAgent"
-  | "productionAgent:storyboardTableAgent";
+  | "productionAgent:storyboardTableAgent"
+  | "animalVideoAgent:scriptAgent";
 
 type FnName = "textRequest" | "imageRequest" | "videoRequest" | "ttsRequest";
 
@@ -41,6 +42,7 @@ const AiTypeValues: AiType[] = [
   "productionAgent:storyboardGenAgent",
   "productionAgent:storyboardPanelAgent",
   "productionAgent:storyboardTableAgent",
+  "animalVideoAgent:scriptAgent",
   "universalAi",
 ];
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {

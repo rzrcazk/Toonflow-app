@@ -6,16 +6,19 @@ const router = express.Router();
 
 export default router.get("/", async (req, res) => {
   try {
-    const tables: { name: string }[] = await db.raw(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'knex_%'`,
+    const tablesResult = await db.raw<{ tablename: string }[]>(
+      `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
     );
+    const tables = tablesResult.rows;
 
     const tableInfo = [];
     for (const table of tables) {
-      const countResult = await db.raw(`SELECT COUNT(*) as count FROM "${table.name}"`);
+      const countResult = await db.raw(`SELECT COUNT(*) as count FROM "${table.tablename}"`);
+      const countValue = countResult.rows[0]?.count ?? 0;
+      const rowCount = typeof countValue === "string" ? Number(countValue) : countValue;
       tableInfo.push({
-        name: table.name,
-        rowCount: countResult[0]?.count ?? 0,
+        name: table.tablename,
+        rowCount,
       });
     }
 

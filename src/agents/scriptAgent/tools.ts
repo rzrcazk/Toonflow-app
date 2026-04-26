@@ -45,11 +45,22 @@ export default (toolCpnfig: ToolConfig) => {
           .select("id", "order as index", "reel", "chapter", "chapterData", "event", "eventState")
           .whereIn("order", chapterIndexs);
         thinking.appendText("正在查询章节编号: " + chapterIndexs.join(","));
-        const eventString = data.map((i: any) => [`第${i.index}章，标题：${i.chapter}，事件：${i.event}`].join("\n")).join("\n");
+        const eventString = data
+          .map((i: any) => {
+            if (i.event) {
+              return `第${i.index}章，标题：${i.chapter}，事件：${i.event}`;
+            }
+            // 事件为空时回退到章节原文
+            const preview = (i.chapterData ?? "").trim();
+            return preview
+              ? `第${i.index}章，标题：${i.chapter}（原文）：${preview}`
+              : `第${i.index}章，标题：${i.chapter}（无内容）`;
+          })
+          .join("\n");
         thinking.appendText("查询结果:\n" + eventString);
         thinking.updateTitle("查询章节事件完成");
         thinking.complete();
-        return eventString ?? "无数据";
+        return eventString || "无数据";
       },
     }),
     get_planData: tool({
@@ -73,14 +84,20 @@ export default (toolCpnfig: ToolConfig) => {
         chapterIndex: z.string().describe("章节编号"),
       }),
       execute: async ({ chapterIndex }) => {
-        console.log("[tools] get_novel_text", "[tools] get_novel_text", chapterIndex);
+        console.log("[tools] get_novel_text", chapterIndex);
         const thinking = msg.thinking(`正在获取小说章节原文...`);
-        const data = await u.db("o_novel").where("projectId", resTool.data.projectId).where({ order: chapterIndex }).select("chapterData").first();
-        const text = data && data?.chapterData ? data.chapterData : "";
+        const orderNum = Number(chapterIndex);
+        let data: any;
+        if (!isNaN(orderNum)) {
+          data = await u.db("o_novel").where("projectId", resTool.data.projectId).where("order", orderNum).select("chapterData").first();
+        } else {
+          data = await u.db("o_novel").where("projectId", resTool.data.projectId).where("order", chapterIndex).select("chapterData").first();
+        }
+        const text = data?.chapterData ?? "";
         thinking.appendText(`获取到原文:\n` + text);
         thinking.updateTitle(`获取小说章节原文完成`);
         thinking.complete();
-        return text ?? "无数据";
+        return text || "无数据";
       },
     }),
     get_script_content: tool({

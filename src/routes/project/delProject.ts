@@ -27,7 +27,6 @@ export default router.post(
       await u.db("o_scriptAssets").whereIn("scriptId", scriptIds).delete();
     }
     await u.db("o_script").where("projectId", id).delete();
-    await u.db("o_outline").where("projectId", id).delete();
     // 删除项目下的任务
     await u.db("o_tasks").where("projectId", id).delete();
     // 删除项目下的分镜

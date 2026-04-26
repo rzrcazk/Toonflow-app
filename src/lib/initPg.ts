@@ -308,7 +308,7 @@ async function createImageTable(knex: Knex) {
 async function createImageFlowTable(knex: Knex) {
   await knex.schema.createTableIfNotExists("o_imageFlow", (table) => {
     table.increments("id").primary();
-    table.integer("imageId").notNullable();
+    table.integer("imageId").nullable();
     table.string("flowType").nullable();
     table.text("flowData").nullable();
     table.timestamp("created_at").defaultTo(knex.fn.now());

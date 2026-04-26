@@ -101,6 +101,18 @@ export default async (knex: Knex): Promise<void> => {
         await knex.raw(`ALTER TABLE "o_videoTrack" ALTER COLUMN "trackIndex" DROP NOT NULL`);
       }
     }
+
+    // 移除 o_imageFlow.imageId 的 NOT NULL 约束（分镜编辑等场景下 imageId 可为空）
+    const hasImageFlowTable = await knex.schema.hasTable("o_imageFlow");
+    if (hasImageFlowTable) {
+      const imageIdColInfo = await knex.raw(`
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_name = 'o_imageFlow' AND column_name = 'imageId'
+      `);
+      if (imageIdColInfo.rows?.[0]?.is_nullable === "NO") {
+        await knex.raw(`ALTER TABLE "o_imageFlow" ALTER COLUMN "imageId" DROP NOT NULL`);
+      }
+    }
   }
 
   // 矫正因软件异常退出导致的状态不一致问题

@@ -1,10 +1,13 @@
 node_modules
 build
+data/serve
+data/db*
+data/*.sqlite
 dist
 logs
-uploads
 .git
-.gitignore
+.DS_Store
+.claw
 *.md
 LICENSE
 NOTICES.txt
@@ -14,3 +17,4 @@ env
 docs
 *.log
 .env*
+uploads

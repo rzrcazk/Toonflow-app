@@ -3,7 +3,6 @@ import u from "@/utils";
 import { z } from "zod";
 import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
-import { info } from "node:console";
 const router = express.Router();
 
 export default router.post(
@@ -19,10 +18,12 @@ export default router.post(
     ),
     // 用户选择的文本 LLM 模型（用于生成视频提示词）
     model: z.string(),
+    // 用户选择的视频模型（提示词将用于该视频模型）
+    videoModel: z.string(),
   }),
   async (req, res) => {
-    const { trackId, projectId, info, model } = req.body;
-    //查询参数
+    const { trackId, projectId, info, model, videoModel } = req.body;
+    // 查询参数
     const images = await Promise.all(
       info.map(async (item: { id: number; sources: string }) => {
         if (item.sources === "storyboard") {
@@ -32,7 +33,7 @@ export default router.post(
             .where("o_storyboard.id", item.id)
             .select("videoDesc", "prompt", "track", "duration", "shouldGenerateImage")
             .first();
-          // 查询分镜关联的资产ID
+          // 查询分镜关联的资产 ID
           const assetRows = await u.db("o_assets2Storyboard").where("storyboardId", item.id).orderBy("id").select("assetsId");
           const associateAssetsIds = assetRows.map((row: any) => row.assetsId);
           return {
@@ -79,7 +80,23 @@ export default router.post(
           shouldGenerateImage: item.shouldGenerateImage,
         });
     }
-    const [id, modelData] = model.split(/:(.+)/);
+
+    // 解析视频模型信息
+    const [videoVendorId, videoModelName] = videoModel.split(/:(.+)/);
+    // 获取视频模型的配置（mode 等）
+    let videoModelMode: string[] = [];
+    let videoModelVendorName = "";
+    try {
+      const videoModelConfig = await u.vendor.getModelList(videoVendorId);
+      const foundModel = videoModelConfig.find((m: any) => m.modelName === videoModelName);
+      if (foundModel) {
+        videoModelMode = foundModel.mode || [];
+        videoModelVendorName = foundModel.vendorName || "";
+      }
+    } catch (e) {
+      console.error("[generateVideoPrompt] 获取视频模型配置失败:", e);
+    }
+
     const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
     let videoPromptGeneration = "" as string | undefined;
@@ -90,22 +107,39 @@ export default router.post(
     }
     const artStyle = projectData?.artStyle || "无";
     const visualManual = u.getArtPrompt(artStyle, "art_skills", "art_storyboard_video");
+
+    // 将视频模式转换为可读的描述
+    const modeLabelMap: Record<string, string> = {
+      singleImage: "单图参考模式",
+      startEndRequired: "首尾帧必需模式",
+      endFrameOptional: "首帧必需 + 尾帧可选模式",
+      startFrameOptional: "首帧可选模式",
+      text: "纯文本生成模式",
+    };
+    const modeDescription = Array.isArray(videoModelMode)
+      ? videoModelMode.length > 0
+        ? videoModelMode.map((m: string) => modeLabelMap[m] || m).join(", ")
+        : "未指定模式"
+      : String(videoModelMode || "未指定模式");
+
     const content = `
-          **目标视频模型**：${modelData},
+          **目标视频模型**：${videoModelName || videoModel},
+          **视频供应商**：${videoModelVendorName || "未知"},
+          **视频模型模式**：${modeDescription},
           **资产信息**（角色、场景、道具):${assets
-        .filter((i) => i.filePath)
-        .map((i) => `[${i.id},${i.type},${i.name}]`)
-        .join("，")},
+            .filter((i) => i.filePath)
+            .map((i) => `[${i.id},${i.type},${i.name}]`)
+            .join(",")},
           **分镜信息**：${storyboard.map(
-          (i) => `<storyboardItem
+            (i) => `<storyboardItem
   videoDesc='${i.videoDesc}'
   duration='${i.duration}'
 ></storyboardItem>`,
-        )},
+          )},
           `;
 
     try {
-      // 使用前端传入的模型（用户选择的文本 LLM）
+      // 使用前端传入的文本 LLM 模型生成提示词
       const { text } = await u.Ai.Text(model).invoke({
         system: videoPromptGeneration,
         messages: [

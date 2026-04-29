@@ -28,9 +28,14 @@ export default router.post(
   async (req, res) => {
     const { source, url } = req.body;
 
-    const getUrl = url ?? "https://toonflow.oss-cn-beijing.aliyuncs.com/update.json";
+    const getUrl = url;
+    if (!getUrl) return res.status(400).send(error("请指定版本源 URL"));
 
-    const versionInfo = await fetch(getUrl).then((res) => res.json());
+    const response = await fetch(getUrl);
+    if (!response.ok) return res.status(400).send(error(`获取版本信息失败: HTTP ${response.status}`));
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) return res.status(400).send(error(`版本源返回非 JSON 格式: ${contentType}`));
+    const versionInfo = await response.json();
     if (!versionInfo) return res.status(400).send(error("无法获取版本信息"));
     const { version: tagger, time, data } = versionInfo;
 

@@ -11,6 +11,33 @@ Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动
 
 ---
 
+## 部署架构（重要）
+
+本项目是后端项目，但涉及前端构建和 Docker 部署。部署流程涉及三个不同位置的目录：
+
+| 目录 | 用途 |
+|------|------|
+| `/Volumes/juanshen/github/Toonflow-web` | 前端源码，运行 `yarn build` 生成前端构建产物 |
+| `/Volumes/juanshen/github/Toonflow-app` | 后端主仓库（本仓库），包含 Dockerfile，用于构建 Docker 镜像 |
+| `/Volumes/juanshen/docker/toonflow-app` | Docker 运行时目录，含 docker-compose.yml，引用已构建的本地镜像启动服务 |
+
+**部署流程**：
+
+1. 在 Toonflow-web 执行 `yarn build` 生成前端构建产物
+2. 将构建产物同时复制到：
+   - 当前项目的 `data/web`（本地开发验证）
+   - Docker 目录 `/Volumes/juanshen/docker/toonflow-app/data/web`（容器运行需要）
+3. 在**当前项目**（非 docker 目录）基于 Dockerfile 构建本地镜像 `toonflow-app`
+4. 在 docker 目录通过 `docker compose up -d` 启动服务（使用步骤 3 构建的本地镜像）
+
+**注意事项**：
+
+- 检查前端代码时，去 `/Volumes/juanshen/github/Toonflow-web`（源码），不要看 `data/web`（构建产物）
+- 构建镜像在**当前项目**进行，不是 docker 目录
+- 启动服务用 Docker，`yarn dev` 仅用于后端 API 本地开发调试
+
+---
+
 ## 技术栈
 
 | 类别 | 技术 |
@@ -226,8 +253,8 @@ yarn debug:ai
 
 | 仓库 | 说明 |
 |------|------|
-| [Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) | 完整客户端（本仓库） |
-| [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-app) | 前端源代码 |
+| [Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) | 后端主仓库（本仓库），包含 Dockerfile 和 `data/web`（前端构建产物） |
+| [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web) | 前端源码（路径：`/Volumes/juanshen/github/Toonflow-web`），构建产物复制到当前项目 `data/web` |
 
 ---
 

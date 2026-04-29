@@ -42,11 +42,11 @@ export default router.post(
       .count("* as total")
       .first()) as any;
 
-    res.status(200).send({
-      code: 200,
-      data,
-      total: totalQuery.total,
-      message: "成功",
-    });
+    res.status(200).send(
+      success({
+        data,
+        total: Number(totalQuery.total),
+      }),
+    );
   },
 );

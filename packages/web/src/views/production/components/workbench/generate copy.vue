@@ -1059,10 +1059,8 @@ const references = computed(() =>{
     .map((item) => ({
       type: getFileTypeByExt(item.src) as "image" | "video" | "audio" | "text",
       src: item.src ?? "",
-    })),
-}
-
-);
+    }));
+});
 
 /** 提示词失焦时保存到后端 */
 function handlePromptBlur() {

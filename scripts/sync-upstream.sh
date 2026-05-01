@@ -22,7 +22,7 @@ git merge "$UPSTREAM_APP/$APP_BRANCH" --no-edit
 echo ""
 echo "📡 Syncing web upstream ($UPSTREAM_WEB/$WEB_BRANCH)..."
 git fetch "$UPSTREAM_WEB"
-git subtree pull --prefix=packages/web "$UPSTREAM_WEB" "$WEB_BRANCH" --squash --no-edit
+git subtree pull --prefix=packages/web "$UPSTREAM_WEB" "$WEB_BRANCH" --squash -m "Merge $UPSTREAM_WEB/$WEB_BRANCH into packages/web"
 
 echo ""
 echo "✅ Sync complete!"

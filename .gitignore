@@ -45,7 +45,11 @@ db.sqlite
 db.sqlite-shm
 db.sqlite-wal
 
-web/*
+# packages/web build artifacts
+packages/web/dist/
+packages/web/node_modules/
+packages/web/.svelte-kit/
+packages/web/.vercel/
 
 *.sqlite
 

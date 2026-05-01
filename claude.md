@@ -4,37 +4,48 @@
 
 Toonflow 是一款 AI 短剧漫剧工具，能够利用 AI 技术将小说自动转化为剧本，并结合 AI 生成的图片和视频，实现高效的短剧创作。
 
-**当前版本**: 1.1.5  
-**当前分支**: `feature/ai-animal-video`  
-**开发分支**: `develop`  
+**当前版本**: 1.1.6
+**当前分支**: `feature/animal-science-video`
+**开发分支**: `develop`
 **生产分支**: `master`（不接受直接 PR）
 
 ---
 
-## 部署架构（重要）
+## 工作目录说明（重要）
 
-本项目是后端项目，但涉及前端构建和 Docker 部署。部署流程涉及三个不同位置的目录：
+**本目录（`/Volumes/juanshen/github/Toonflow-app/`）是唯一的工作目录**，前后端源码、Docker 配置、运行时数据都在这里。
 
-| 目录 | 用途 |
-|------|------|
-| `/Volumes/juanshen/github/Toonflow-web` | 前端源码，运行 `yarn build` 生成前端构建产物 |
-| `/Volumes/juanshen/github/Toonflow-app` | 后端主仓库（本仓库），包含 Dockerfile，用于构建 Docker 镜像 |
-| `/Volumes/juanshen/docker/toonflow-app` | Docker 运行时目录，含 docker-compose.yml，引用已构建的本地镜像启动服务 |
+| 目录/文件 | 用途 |
+|-----------|------|
+| `packages/web/` | 前端源码（Vue/Vite，git subtree 合并自 Toonflow-web） |
+| `src/` | 后端源码（Express/TypeScript） |
+| `data/` | 运行时持久化数据（OSS 素材、模型、技能、vendor 配置等） |
+| `infra/` | Docker 多阶段构建 + compose 编排 |
+| `docker-compose.yml` | 一键构建 + 启动入口 |
 
-**部署流程**：
+**不需要关心其他目录**。改完代码后直接 `docker compose -f infra/docker-compose.yml up --build -d` 即可。
 
-1. 在 Toonflow-web 执行 `yarn build` 生成前端构建产物
-2. 将构建产物同时复制到：
-   - 当前项目的 `data/web`（本地开发验证）
-   - Docker 目录 `/Volumes/juanshen/docker/toonflow-app/data/web`（容器运行需要）
-3. 在**当前项目**（非 docker 目录）基于 Dockerfile 构建本地镜像 `toonflow-app`
-4. 在 docker 目录通过 `docker compose up -d` 启动服务（使用步骤 3 构建的本地镜像）
+### 日常开发
 
-**注意事项**：
+```bash
+# 改前后端代码 → 重启容器生效（自动构建前端 + 后端）
+docker compose -f infra/docker-compose.yml up --build -d
+```
 
-- 检查前端代码时，去 `/Volumes/juanshen/github/Toonflow-web`（源码），不要看 `data/web`（构建产物）
-- 构建镜像在**当前项目**进行，不是 docker 目录
-- 启动服务用 Docker，`yarn dev` 仅用于后端 API 本地开发调试
+### 同步上游最新代码
+
+```bash
+./scripts/sync-upstream.sh
+```
+
+自动拉取后端（HBAI-Ltd/Toonflow-app/develop）和前端（HBAI-Ltd/Toonflow-web/master）最新代码，你的定制代码会保留。
+
+### 后端本地调试（不启动容器）
+
+```bash
+yarn install
+yarn dev    # 带 inspect，端口 10588
+```
 
 ---
 
@@ -84,6 +95,17 @@ yarn dist:linux    # Linux
 
 # AI 调试面板
 yarn debug:ai
+
+# === Monorepo 专用命令 ===
+
+# Docker 一键构建 + 启动
+docker compose -f infra/docker-compose.yml up --build -d
+
+# 停止容器
+docker compose -f infra/docker-compose.yml down
+
+# 同步上游最新代码
+./scripts/sync-upstream.sh
 ```
 
 ---
@@ -97,8 +119,14 @@ Toonflow-app/
 │   ├── oss/              # 对象存储 (素材/角色/场景)
 │   ├── serve/            # 生产环境入口
 │   ├── skills/           # Agent 技能提示词
-│   └── web/              # 前端编译产物
+│   └── web/              # 前端编译产物（Docker 构建时自动生成）
+├── packages/
+│   └── web/              # 前端源码（git subtree 合并自 Toonflow-web）
+├── infra/                 # Docker 编排
+│   ├── Dockerfile.multi-stage  # 多阶段构建（前端 build + 后端运行）
+│   └── docker-compose.yml      # 服务编排
 ├── scripts/               # 构建与辅助脚本
+│   └── sync-upstream.sh  # 同步上游最新代码
 ├── src/
 │   ├── agents/           # AI Agent 模块
 │   │   ├── productionAgent/   # 生产 Agent
@@ -121,7 +149,7 @@ Toonflow-app/
 ├── package.json           # 项目配置
 ├── tsconfig.json          # TypeScript 配置
 ├── electron-builder.yml   # Electron 打包配置
-└── Dockerfile             # Docker 构建文件
+└── Dockerfile             # Docker 构建文件（传统模式，兼容用）
 ```
 
 ---
@@ -253,8 +281,33 @@ yarn debug:ai
 
 | 仓库 | 说明 |
 |------|------|
-| [Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) | 后端主仓库（本仓库），包含 Dockerfile 和 `data/web`（前端构建产物） |
-| [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web) | 前端源码（路径：`/Volumes/juanshen/github/Toonflow-web`），构建产物复制到当前项目 `data/web` |
+| [Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app) | 后端主仓库（本仓库），monorepo 包含前端源码 |
+| [Toonflow-web](https://github.com/HBAI-Ltd/Toonflow-web) | 前端源码上游，通过 git subtree 合并到 `packages/web/` |
+
+### Git Remote 配置
+
+```bash
+origin          → 你的 fork（rzrcazk/Toonflow-app）
+upstream        → 官方上游（HBAI-Ltd/Toonflow-app）
+upstream-web    → 前端上游（HBAI-Ltd/Toonflow-web）
+```
+
+### 同步上游工作流
+
+```bash
+# 一键同步后端 + 前端上游最新代码
+./scripts/sync-upstream.sh
+
+# 手动同步后端
+git fetch upstream && git merge upstream/develop
+
+# 手动同步前端
+git fetch upstream-web && git subtree pull --prefix=packages/web upstream-web master --squash
+
+# 查看自己的定制
+git log upstream/develop..HEAD            # 后端定制
+git log --oneline -- packages/web/        # 前端定制
+```
 
 ---
 

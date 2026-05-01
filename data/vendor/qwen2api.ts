@@ -1,6 +1,6 @@
 /**
  * Toonflow AI 供应商模板 - 通义千问 (Qwen2API)
- * @version 1.0
+ * @version 2.0
  */
 
 // ============================================================
@@ -74,7 +74,7 @@ interface ImageConfig {
 interface VideoConfig {
   duration: number;
   resolution: string;
-  aspectRatio: "16:9" | "9:16";
+  aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   prompt: string;
   referenceList?: ReferenceList[];
   audio?: boolean;
@@ -133,27 +133,27 @@ declare const exports: {
 
 const vendor: VendorConfig = {
   id: "qwen2api",
-  version: "1.1",
+  version: "2.0",
   author: "Toonflow",
   name: "通义千问 (Qwen2API)",
-  description: "通义千问 AI 平台适配，支持 qwen3.6-plus-image 图片生成和 qwen3.6-plus-video 视频生成能力\n\n需要自行部署 [Qwen2API](https://github.com/Rfym21/Qwen2API) 代理服务，并填入该服务配置的 API Key（如 sk-xxxxxxxx），而非 chat.qwen.ai 的 SessionID",
+  description: "通义千问 AI 平台适配，支持 qwen3.6-plus 图片生成和视频生成（文生视频、图生视频）能力\n\n需要自行部署 [Qwen2API](https://github.com/Rfym21/Qwen2API) 代理服务，并填入该服务配置的 API Key（如 sk-xxxxxxxx），而非 [chat.qwen.ai](http://chat.qwen.ai) 的 SessionID",
   inputs: [
     { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "请输入 Qwen2API 服务的 API Key (如 sk-xxxxxxxx)" },
-    { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：http://qwen2api:3000" },
+    { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：http://qwen2api:7860" },
   ],
-  inputValues: { apiKey: "", baseUrl: "http://127.0.0.1:3004" },
+  inputValues: { apiKey: "sk-35b522b4373daf053493e281c5f2e9c61e97b1b9678cb5dd", baseUrl: "http://qwen2api:7860" },
   models: [
     // 图片模型
     {
-      name: "Qwen3.6-Plus-Image",
-      modelName: "qwen3.6-plus-image",
+      name: "qwen3.6-plus",
+      modelName: "qwen3.6-plus",
       type: "image",
       mode: ["text", "singleImage"],
     },
     // 视频模型
     {
-      name: "Qwen3.6-Plus-Video",
-      modelName: "qwen3.6-plus-video",
+      name: "qwen3.6-plus",
+      modelName: "qwen3.6-plus",
       type: "video",
       mode: ["text", "singleImage"],
       audio: false,
@@ -168,11 +168,15 @@ const vendor: VendorConfig = {
 // 辅助工具
 // ============================================================
 
-const getHeaders = () => {
-  const token = vendor.inputValues.apiKey;
+const getBaseUrl = (): string => {
+  return vendor.inputValues.baseUrl.replace(/\/$/, "");
+};
+
+const getHeaders = (): Record<string, string> => {
+  const apiKey = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
   return {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`,
+    "Authorization": `Bearer ${apiKey}`,
   };
 };
 
@@ -182,52 +186,61 @@ const getHeaders = () => {
 
 const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3) => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少 API Key");
-  const token = vendor.inputValues.apiKey;
-  const baseUrl = vendor.inputValues.baseUrl;
+  const token = vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "");
+  const baseUrl = getBaseUrl();
   return createOpenAI({ baseURL: `${baseUrl}/v1`, apiKey: token }).chat(model.modelName);
 };
 
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少 API Key");
 
-  const baseUrl = vendor.inputValues.baseUrl;
+  const baseUrl = getBaseUrl();
   const headers = getHeaders();
-
   const hasRefs = config.referenceList && config.referenceList.length > 0;
-  let messageContent: any;
-
-  if (hasRefs) {
-    messageContent = [
-      { type: "text", text: config.prompt },
-      ...config.referenceList!.map((ref) => ({
-        type: "image_url",
-        image_url: { url: ref.base64 },
-      })),
-    ];
-  } else {
-    messageContent = config.prompt;
-  }
-
-  const reqBody: any = {
-    model: model.modelName,
-    messages: [{ role: "user", content: messageContent }],
-    size: config.aspectRatio,
-    stream: false,
-  };
 
   logger(`开始提交 Qwen2API 图片生成任务，模型：${model.modelName}`);
 
   try {
-    const resp = await axios.post(`${baseUrl}/v1/chat/completions`, reqBody, { headers });
+    let resp: any;
 
-    const content = resp.data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("未获取到图片生成结果");
+    if (hasRefs) {
+      // 图生图：通过聊天接口的多模态消息实现
+      const messageContent = [
+        { type: "text", text: config.prompt },
+        ...config.referenceList!.map((ref) => ({
+          type: "image_url",
+          image_url: { url: ref.base64.startsWith("data:") ? ref.base64 : `data:image/png;base64,${ref.base64}` },
+        })),
+      ];
 
-    const imgMatch = content.match(/!\[(?:image)?\]\((https?:\/\/[^)]+)\)/) || content.match(/(https?:\/\/\S+\.(?:png|jpg|jpeg|webp))/i);
-    if (!imgMatch) throw new Error(`无法从响应中提取图片 URL，响应：${content}`);
+      resp = await axios.post(`${baseUrl}/v1/chat/completions`, {
+        model: model.modelName,
+        messages: [{ role: "user", content: messageContent }],
+        stream: false,
+      }, { headers });
 
-    logger(`图片生成完成，开始转换 Base64`);
-    return await urlToBase64(imgMatch[1]);
+      const content = resp.data?.choices?.[0]?.message?.content;
+      if (!content) throw new Error("未获取到图片生成结果");
+
+      const imgMatch = content.match(/!\[(?:image)?\]\((https?:\/\/[^)]+)\)/) || content.match(/(https?:\/\/\S+\.(?:png|jpg|jpeg|webp))/i);
+      if (!imgMatch) throw new Error(`无法从响应中提取图片 URL，响应：${content}`);
+
+      logger(`图片生成完成，开始转换 Base64`);
+      return await urlToBase64(imgMatch[1]);
+    } else {
+      // 文生图：使用 OpenAI 兼容的图片生成端点
+      resp = await axios.post(`${baseUrl}/v1/images/generations`, {
+        prompt: config.prompt,
+        model: model.modelName,
+        n: 1,
+      }, { headers });
+
+      const imageUrl = resp.data?.data?.[0]?.url;
+      if (!imageUrl) throw new Error("未获取到图片生成结果");
+
+      logger(`图片生成完成，开始转换 Base64`);
+      return await urlToBase64(imageUrl);
+    }
   } catch (error) {
     logger(`Qwen2API 图片生成失败：${error.message}`);
     throw new Error(`Qwen2API 图片生成失败：${error.message}`);
@@ -237,47 +250,67 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
 const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
   if (!vendor.inputValues.apiKey) throw new Error("缺少 API Key");
 
-  const baseUrl = vendor.inputValues.baseUrl;
+  const baseUrl = getBaseUrl();
   const headers = getHeaders();
 
-  const imageRefs = config.referenceList?.filter((r) => r.type === "image") || [];
-  let messageContent: any;
-
-  if (imageRefs.length > 0) {
-    const refImages = config.mode.includes("startEndRequired")
-      ? imageRefs.slice(0, 2)
-      : imageRefs.slice(0, 1);
-    messageContent = [
-      { type: "text", text: config.prompt },
-      ...refImages.map((ref) => ({
-        type: "image_url",
-        image_url: { url: ref.base64 },
-      })),
-    ];
-  } else {
-    messageContent = config.prompt;
-  }
-
-  const reqBody = {
+  const reqBody: any = {
+    prompt: config.prompt,
     model: model.modelName,
-    messages: [{ role: "user", content: messageContent }],
     size: config.aspectRatio,
     stream: false,
   };
 
-  logger(`开始提交 Qwen2API 视频生成任务，模型：${model.modelName}，时长：${config.duration}s`);
+  // 图生视频：添加 image_url 字段
+  const imageRefs = config.referenceList?.filter((r) => r.type === "image") || [];
+  let firstRef = imageRefs[0];
+  if (imageRefs.length > 0) {
+    // 优先使用 URL（避免 base64 data URL 超长），fallback 到 base64
+    if ((firstRef as any).url) {
+      reqBody.image_url = (firstRef as any).url;
+    } else {
+      reqBody.image_url = firstRef.base64.startsWith("data:") ? firstRef.base64 : `data:image/png;base64,${firstRef.base64}`;
+    }
+  }
+
+  // ============ 完整调试日志 ============
+  logger("========== [Qwen2API VideoRequest DEBUG] ==========");
+  logger(`POST URL: ${baseUrl}/v1/videos`);
+  logger(`HEADERS: ${JSON.stringify(headers)}`);
+
+  // 截断 base64 避免刷屏
+  const truncatedBody = JSON.stringify(reqBody, (k, v) => {
+    if (k === "image_url" && typeof v === "string" && v.length > 80) {
+      return v.substring(0, 4) + "...(内容太长)..." + v.slice(-5);
+    }
+    return v;
+  }, 2);
+  logger(`REQUEST BODY:\n${truncatedBody}`);
+
+  if (firstRef) {
+    logger(`firstRef.url: ${(firstRef as any).url || 'N/A (说明没收到 URL，走的是 base64 路径)'}`);
+    const b64 = firstRef.base64 || "";
+    if (b64.length > 50) {
+      logger(`firstRef.base64: ${b64.substring(0, 4)}...(内容太长)...${b64.slice(-5)} (${b64.length} chars)`);
+    } else {
+      logger(`firstRef.base64: ${b64}`);
+    }
+  } else {
+    logger(`firstRef: undefined (无参考图片)`);
+  }
+  logger("========================================");
 
   try {
-    const resp = await axios.post(`${baseUrl}/v1/chat/completions`, reqBody, { headers });
+    const resp = await axios.post(`${baseUrl}/v1/videos`, reqBody, { headers });
+    logger(`========== [Qwen2API Response DEBUG] ==========`);
+    logger(`STATUS: ${resp.status}`);
+    logger(`RESPONSE DATA: ${JSON.stringify(resp.data, null, 2)}`);
+    logger("========================================");
 
-    const content = resp.data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("未获取到视频生成结果");
-
-    const urlMatch = content.match(/(https?:\/\/\S+\.mp4[^\s)"'\]]*)/i) || content.match(/(https?:\/\/\S+)/);
-    if (!urlMatch) throw new Error(`无法从响应中提取视频 URL，响应：${content}`);
+    const videoUrl = resp.data?.data?.[0]?.url;
+    if (!videoUrl) throw new Error("未获取到视频生成结果");
 
     logger(`视频生成完成，开始转换 Base64`);
-    return await urlToBase64(urlMatch[1]);
+    return await urlToBase64(videoUrl);
   } catch (error) {
     logger(`Qwen2API 视频生成失败：${error.message}`);
     throw new Error(`Qwen2API 视频生成失败：${error.message}`);
@@ -289,7 +322,7 @@ const ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> =
 };
 
 const checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {
-  return { hasUpdate: false, latestVersion: "1.0", notice: "" };
+  return { hasUpdate: false, latestVersion: "2.0", notice: "" };
 };
 
 const updateVendor = async (): Promise<string> => {

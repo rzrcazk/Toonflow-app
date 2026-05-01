@@ -1,4 +1,4 @@
-// @db-hash 8f5e0fa5ba5431c1e376cd8719aa5f03
+// @db-hash 03998e1f8f8fff663239e3bbab19e580
 //该文件由脚本自动生成，请勿手动修改
 
 export interface memories {
@@ -51,6 +51,7 @@ export interface o_artStyle {
 }
 export interface o_assets {
   'assetsId'?: number | null;
+  'audioBindState'?: number | null;
   'created_at'?: Date | null;
   'describe'?: string | null;
   'flowId'?: number | null;

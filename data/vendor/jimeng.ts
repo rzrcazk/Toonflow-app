@@ -242,19 +242,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
     imageUrl = resp.data.data[0].url;
   }
 
-  // 处理相对路径 URL
-  if (imageUrl.startsWith("/")) {
-    imageUrl = `${baseUrl}${imageUrl}`;
-  }
-
-  logger(`图片生成完成，URL: ${imageUrl}`);
-
-  // 验证 URL 格式
-  if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-    throw new Error(`即梦返回的图片 URL 格式无效：${imageUrl}`);
-  }
-
-  logger(`转换 Base64 中...`);
+  logger(`图片生成完成，转换 Base64 中...`);
   return await urlToBase64(imageUrl);
 };
 

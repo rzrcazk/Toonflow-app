@@ -378,6 +378,7 @@ export default async (knex: Knex): Promise<void> => {
       }
     }
   }
+  await addColumn("o_assets", "audioBindState", "integer");
 
   //添加数据高级配置
   const advancedAgentList = [

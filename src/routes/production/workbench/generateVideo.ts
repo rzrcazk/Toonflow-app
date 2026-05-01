@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { ReferenceList } from "@/utils/ai";
 const router = express.Router();
 
 type Type = "imageReference" | "startImage" | "endImage" | "videoReference" | "audioReference";
@@ -65,7 +66,7 @@ export default router.post(
             .db("o_assets")
             .where("o_assets.id", item.id)
             .leftJoin("o_image", "o_assets.imageId", "o_image.id")
-            .select("o_image.filePath")
+            .select("o_image.filePath", "o_image.type")
             .first();
           filePath = record?.filePath || "";
         }

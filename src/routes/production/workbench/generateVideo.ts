@@ -49,31 +49,39 @@ export default router.post(
     //获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
     const videoPath = `/${projectId}/video/${uuidv4()}.mp4`; //视频保存路径
-    //查询出图片数据
-    const images = await Promise.all(
+
+    // 一次性查询出图片 filePath，同时生成 URL 和 base64
+    // URL 给 qwen2api 等用（避免 base64 超长），base64 给 jimeng 等用（兼容旧逻辑）
+    const ossInternalUrl = process.env.OSS_INTERNAL_URL || `http://toonflow-app:10588`;
+    const imagePaths: string[] = [];
+    await Promise.all(
       uploadData.map(async (item: UploadItem) => {
+        let filePath = "";
         if (item.sources === "storyboard") {
-          const filePath = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
-          return filePath?.filePath;
-        }
-        if (item.sources === "assets") {
-          const filePath = await u
+          const record = await u.db("o_storyboard").where("id", item.id).select("filePath").first();
+          filePath = record?.filePath || "";
+        } else if (item.sources === "assets") {
+          const record = await u
             .db("o_assets")
             .where("o_assets.id", item.id)
             .leftJoin("o_image", "o_assets.imageId", "o_image.id")
             .select("o_image.filePath")
             .first();
-          return filePath?.filePath;
+          filePath = record?.filePath || "";
         }
+        imagePaths.push(filePath);
       }),
     );
-    //把images里面的图片转成base64格式
-    const base64 = await Promise.all(
-      images.map(async (item) => {
-        if (!item) return null;
-        return await u.oss.getImageBase64(item);
-      }),
+
+    const validPaths = imagePaths.filter(Boolean);
+    const imageUrls = validPaths.map((p) => `${ossInternalUrl}/oss/${p}`);
+    const base64List: (string | null)[] = await Promise.all(
+      validPaths.map(async (p) => await u.oss.getImageBase64(p)),
     );
+    console.log("[generateVideo DEBUG] imagePaths:", JSON.stringify(imagePaths));
+    console.log("[generateVideo DEBUG] imageUrls:", JSON.stringify(imageUrls));
+    console.log("[generateVideo DEBUG] base64长度:", base64List.map(b => b ? `${b.length} chars` : null));
+
     //新增
     const result = await u.db("o_video").insert({
       videoPath: videoPath,
@@ -96,7 +104,12 @@ export default router.post(
         await aiVideo.run(
           {
             prompt,
-            referenceList: base64.filter((item) => item !== null).map((item) => ({ type: "image" as const, base64: item! })),
+            referenceList: validPaths.map((p, i) => ({
+              type: "image" as const,
+              sourceType: "url" as const,
+              url: imageUrls[i],
+              base64: base64List[i] || "", // 兼容依赖 base64 的 vendor（如 jimeng）
+            })),
             mode: modeData.length > 0 ? modeData : mode,
             duration,
             aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",

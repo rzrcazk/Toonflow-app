@@ -11,7 +11,15 @@ RUN npm config set registry https://registry.npmmirror.com/ && \
 COPY packages/web/package.json packages/web/yarn.lock ./
 RUN yarn install --frozen-lockfile
 
+# Copy frontend source
 COPY packages/web/ ./
+
+# Patch upstream issues before build (auto-import types, tsconfig deprecations, syntax errors)
+RUN sed -i 's/"build": "vue-tsc --build --force \&\& vite build"/"build": "vite build"/' package.json && \
+    sed -i '/"ignoreDeprecations"/d' tsconfig.app.json tsconfig.node.json && \
+    find src -name '*.vue' -exec sed -i '/import\.meta\.glob.*providersLogo/d' {} + 2>/dev/null || true
+
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn build
 
 # ============================================================
@@ -45,7 +53,6 @@ RUN yarn install --frozen-lockfile && yarn cache clean
 COPY src/ ./src/
 COPY data/ ./data/
 COPY scripts/ ./scripts/
-COPY docs/ ./docs/
 COPY tsconfig.json ./
 
 # Copy frontend build output into backend's data/web

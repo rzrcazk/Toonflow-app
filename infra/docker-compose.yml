@@ -5,14 +5,14 @@ networks:
 services:
   toonflow-app:
     build:
-      context: .
-      dockerfile: infra/Dockerfile.multi-stage
+      context: ..
+      dockerfile: infra/Dockerfile.backend-only
     image: toonflow-app
     container_name: toonflow-app
     environment:
       - NODE_ENV=dev
       - PORT=10588
-      - TZ=${TZ}
+      - TZ=${TZ:-Asia/Shanghai}
       - DB_TYPE=pg
       - PG_HOST=postgresql
       - PG_PORT=5432
@@ -45,5 +45,5 @@ services:
       - ./data/models:/app/data/models
       - ./data/skills:/app/data/skills
       - ./data/vendor:/app/data/vendor
-      # data/web 不挂载，由 Dockerfile 构建阶段自动生成前端产物
+      - ./data/web:/app/data/web
       - ./logs:/app/logs

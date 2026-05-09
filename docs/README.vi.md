@@ -570,15 +570,31 @@ Xin cảm ơn các dự án mã nguồn mở sau đây đã hỗ trợ đắc l�
 Xin cảm ơn các tổ chức/đơn vị/cá nhân sau đây đã hỗ trợ cho Toonflow:
 
 <table>
-  <tr>
-    <td>
-      <img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48">
-    </td>
-    <td>
-      <b>Sophnet (算能云)</b> Tài trợ năng lực tính toán (Computing power)
-      <a href="[https://www.sophnet.com/](https://www.sophnet.com/)">[Website]</a>
-    </td>
-  </tr>
+  <thead>
+    <tr>
+      <th align="center">Logo</th>
+      <th align="center">Tên</th>
+      <th align="center">Hình thức hỗ trợ</th>
+      <th>Mô tả</th>
+      <th align="center">Website</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><b>Sophnet</b></td>
+      <td align="center">💻 Tài trợ điện toán</td>
+      <td>Nền tảng API suy luận mô hình một cửa, nhanh hơn, ổn định hơn và tiết kiệm hơn</td>
+      <td align="center"><a href="https://www.sophnet.com/">Website</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><b>Atlas Cloud</b></td>
+      <td align="center">💻 Tài trợ điện toán</td>
+      <td>Nền tảng suy luận đa phương thức đầu tiên trên thế giới. Chat, hình ảnh, video, âm thanh — tất cả qua một API thống nhất. 300+ mô hình, tương thích OpenAI.</td>
+      <td align="center"><a href="https://www.atlascloud.ai/">Website</a></td>
+    </tr>
+  </tbody>
 </table>
 
 Vui lòng xem danh sách đầy đủ các thư viện phụ thuộc của bên thứ ba trong tệp `NOTICES.txt`.

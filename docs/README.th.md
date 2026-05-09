@@ -585,15 +585,31 @@ Toonflow เปิดเผยเป็นโอเพ่นซอร์สภ�
 ขอขอบคุณองค์กรและผู้สนับสนุนต่อไปนี้ที่ช่วยเหลือ Toonflow:
 
 <table>
-  <tr>
-    <td>
-      <img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48">
-    </td>
-    <td>
-      <b>Sophnet (算能云)</b> ให้การสนับสนุนด้านพลังการประมวลผล (Computing Power)<br>
-      <a href="https://www.sophnet.com/">[เว็บไซต์ทางการ]</a>
-    </td>
-  </tr>
+  <thead>
+    <tr>
+      <th align="center">Logo</th>
+      <th align="center">ชื่อ</th>
+      <th align="center">ประเภทการสนับสนุน</th>
+      <th>รายละเอียด</th>
+      <th align="center">เว็บไซต์</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><b>Sophnet</b></td>
+      <td align="center">💻 ผู้สนับสนุนพลังงาน</td>
+      <td>มุ่งสร้างแพลตฟอร์ม API สำหรับ Model Inference แบบครบวงจร ที่เร็วกว่า เสถียรกว่า และประหยัดกว่า</td>
+      <td align="center"><a href="https://www.sophnet.com/">เว็บไซต์</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><b>Atlas Cloud</b></td>
+      <td align="center">💻 ผู้สนับสนุนพลังงาน</td>
+      <td>แพลตฟอร์ม Inference แบบ Omni-modal แรกของโลก รองรับการสนทนา ภาพ วิดีโอ เสียง — ผ่าน API เดียว รองรับโมเดลกว่า 300 รายการ เข้ากันได้กับ OpenAI</td>
+      <td align="center"><a href="https://www.atlascloud.ai/">เว็บไซต์</a></td>
+    </tr>
+  </tbody>
 </table>
 
 รายการ Third-party Dependencies แบบสมบูรณ์ สามารถดูได้ที่ไฟล์ `NOTICES.txt`

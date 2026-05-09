@@ -575,15 +575,31 @@ Toonflow に強力なサポートを提供してくださる以下のオープ�
 Toonflow を支援してくださる以下の組織・団体・個人に感謝いたします：
 
 <table>
-  <tr>
-    <td>
-      <img src="./sponsored/sophnet.png" alt="算能雲 Logo" width="48">
-    </td>
-    <td>
-      <b>算能雲 (Sophnet)</b> 様より計算リソースの提供をいただいております
-      <a href="[https://www.sophnet.com/](https://www.sophnet.com/)">[公式サイト]</a>
-    </td>
-  </tr>
+  <thead>
+    <tr>
+      <th align="center">Logo</th>
+      <th align="center">名前</th>
+      <th align="center">サポート種別</th>
+      <th>説明</th>
+      <th align="center">公式サイト</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="./sponsored/sophnet.png" alt="Sophnet Logo" width="48"></td>
+      <td align="center"><b>算能雲 (Sophnet)</b></td>
+      <td align="center">💻 計算リソース提供</td>
+      <td>より高速・安定・低コストなワンストップモデル推論 API サービスプラットフォームの構築に取り組んでいます</td>
+      <td align="center"><a href="https://www.sophnet.com/">公式サイト</a></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./sponsored/atlascloud.png" alt="Atlas Cloud Logo" width="48"></td>
+      <td align="center"><b>Atlas Cloud</b></td>
+      <td align="center">💻 計算リソース提供</td>
+      <td>世界初のオムニモーダル推論プラットフォーム。チャット・画像・動画・音声すべてを統一 API で。300+ モデル、OpenAI 互換。</td>
+      <td align="center"><a href="https://www.atlascloud.ai/">公式サイト</a></td>
+    </tr>
+  </tbody>
 </table>
 
 完全なサードパーティの依存関係リストについては `NOTICES.txt` をご参照ください。

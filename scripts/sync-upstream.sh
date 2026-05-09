@@ -1,32 +1,56 @@
 #!/bin/bash
 # ============================================================
-# Sync upstream latest code for both app and web sources
+# Sync upstream latest master, then merge into feature branch
 # ============================================================
 # Usage:
-#   ./scripts/sync-upstream.sh                    # default: develop + master
-#   APP_BRANCH=master ./scripts/sync-upstream.sh  # sync app master
-#   WEB_BRANCH=develop ./scripts/sync-upstream.sh # sync web develop
+#   ./scripts/sync-upstream.sh
+#
+# Logic:
+#   1. Save current branch
+#   2. Commit any uncommitted changes
+#   3. Fetch upstream master
+#   4. Update local master (fast-forward)
+#   5. Switch back to feature branch
+#   6. Merge master into feature branch
 # ============================================================
 
 set -e
 
 UPSTREAM_APP="${UPSTREAM_APP:-upstream}"
-UPSTREAM_WEB="${UPSTREAM_WEB:-upstream-web}"
-APP_BRANCH="${APP_BRANCH:-develop}"
-WEB_BRANCH="${WEB_BRANCH:-master}"
+FEATURE_BRANCH="${FEATURE_BRANCH:-feature/animal-science-video}"
 
-echo "📡 Syncing app upstream ($UPSTREAM_APP/$APP_BRANCH)..."
+# Save current branch
+CURRENT_BRANCH=$(git branch --show-current)
+
+# Commit uncommitted changes if any
+if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  echo "📦 Committing uncommitted changes on $CURRENT_BRANCH..."
+  git add -A
+  git commit -m "chore: auto-commit before sync-upstream"
+fi
+
+echo "📡 Fetching upstream master ($UPSTREAM_APP/master)..."
 git fetch "$UPSTREAM_APP"
-git merge "$UPSTREAM_APP/$APP_BRANCH" --no-edit
 
 echo ""
-echo "📡 Syncing web upstream ($UPSTREAM_WEB/$WEB_BRANCH)..."
-git fetch "$UPSTREAM_WEB"
-git subtree pull --prefix=packages/web "$UPSTREAM_WEB" "$WEB_BRANCH" --squash -m "Merge $UPSTREAM_WEB/$WEB_BRANCH into packages/web"
+echo "📥 Updating local master branch..."
+git checkout master
+git pull "$UPSTREAM_APP" master --ff-only
+
+echo ""
+echo "🔀 Merging master into $FEATURE_BRANCH..."
+git checkout "$FEATURE_BRANCH"
+git merge master --no-edit
 
 echo ""
 echo "✅ Sync complete!"
 echo ""
-echo "Your custom changes:"
-echo "  Backend: git log $UPSTREAM_APP/$APP_BRANCH..HEAD"
-echo "  Frontend: git log --oneline -- packages/web/"
+echo "Feature branch is now up to date with upstream master."
+echo "Your custom changes on $FEATURE_BRANCH:"
+echo "  git log master..HEAD"
+
+# Switch back to original branch if different
+if [ "$CURRENT_BRANCH" != "$FEATURE_BRANCH" ] && [ "$CURRENT_BRANCH" != "master" ]; then
+  echo "🔄 Switching back to $CURRENT_BRANCH..."
+  git checkout "$CURRENT_BRANCH"
+fi

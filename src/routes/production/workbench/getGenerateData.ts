@@ -46,6 +46,10 @@ export default router.post(
       try { return Array.isArray(JSON.parse(projectData.mode ?? "null")); } catch { return false; }
     })();
 
+    const videoMode = (() => {
+      try { return JSON.parse(projectData.mode ?? "null"); } catch { return null; }
+    })();
+
     const storyboardList = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc");
     await Promise.all(
       storyboardList.map(async (i) => {

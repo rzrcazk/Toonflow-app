@@ -29,17 +29,49 @@ export default router.post(
     const { source, url } = req.body;
 
     const getUrl = url;
-    if (!getUrl) return res.status(400).send(error("请指定版本源 URL"));
 
-    const response = await fetch(getUrl);
+    // 内置更新源映射：未传 URL 时使用官方源
+    const builtinSourceUrl: Record<string, string | undefined> = {
+      github: "https://api.github.com/repos/HBAI-Ltd/Toonflow-app/releases/latest",
+    };
+    const finalUrl = getUrl || builtinSourceUrl[source];
+
+    if (!finalUrl) return res.status(200).send(success({ needUpdate: false, latestVersion: APP_VERSION, reinstall: false, time: 0, version: APP_VERSION }));
+
+    const response = await fetch(finalUrl);
     if (!response.ok) return res.status(400).send(error(`获取版本信息失败: HTTP ${response.status}`));
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) return res.status(400).send(error(`版本源返回非 JSON 格式: ${contentType}`));
     const versionInfo = await response.json();
     if (!versionInfo) return res.status(400).send(error("无法获取版本信息"));
-    const { version: tagger, time, data } = versionInfo;
 
-    const sourceData = data[source];
+    // 兼容两种格式：自定义格式 {version, time, data:{source:[{type, url}]}} 和 GitHub releases API
+    let tagger: string;
+    let time: number;
+    let sourceData: any[];
+
+    if (versionInfo.version && versionInfo.data) {
+      // 自定义格式
+      tagger = versionInfo.version;
+      time = versionInfo.time;
+      sourceData = versionInfo.data[source];
+    } else if (versionInfo.tag_name) {
+      // GitHub releases API
+      tagger = versionInfo.tag_name.replace(/^v/, "");
+      time = new Date(versionInfo.created_at).getTime();
+      sourceData = (versionInfo.assets || []).map((a: any) => {
+        const name = a.name.toLowerCase();
+        let type = "zip";
+        if (name.includes("win") && name.includes("setup")) type = "windows";
+        else if (name.includes("mac") && name.includes("dmg")) type = "macos";
+        else if (name.includes("linux") && name.includes("appimage")) type = "linux";
+        else if (name.endsWith(".zip")) type = "zip";
+        return { type, url: a.browser_download_url };
+      });
+    } else {
+      return res.status(400).send(error("版本信息格式无法识别"));
+    }
+
     if (!sourceData) return res.status(400).send(error("无法获取该源的下载信息"));
 
     const platformType: Record<string, string> = {

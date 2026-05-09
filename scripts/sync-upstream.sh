@@ -9,9 +9,9 @@
 #   1. Save current branch
 #   2. Commit any uncommitted changes
 #   3. Fetch upstream master
-#   4. Update local master (fast-forward)
+#   4. Force local master to match upstream/master exactly
 #   5. Switch back to feature branch
-#   6. Merge master into feature branch
+#   6. Merge master into feature branch (conflict → keep feature)
 # ============================================================
 
 set -e
@@ -33,14 +33,25 @@ echo "📡 Fetching upstream master ($UPSTREAM_APP/master)..."
 git fetch "$UPSTREAM_APP"
 
 echo ""
-echo "📥 Updating local master branch..."
+echo "📥 Forcing local master to match upstream/master..."
 git checkout master
-git pull "$UPSTREAM_APP" master --ff-only
+git reset --hard "$UPSTREAM_APP/master"
 
 echo ""
 echo "🔀 Merging master into $FEATURE_BRANCH..."
 git checkout "$FEATURE_BRANCH"
-git merge master --no-edit
+git merge master --no-edit || {
+  echo ""
+  echo "⚠️  Merge conflicts detected. Resolving with feature branch versions..."
+  # Accept feature branch (--ours) for content conflicts
+  git diff --name-only --diff-filter=U | while read f; do
+    if [[ -f "$f" ]]; then
+      git checkout --ours "$f"
+    fi
+    git add "$f"
+  done
+  git commit --no-edit -m "Merge branch 'master' into $FEATURE_BRANCH (conflicts resolved)"
+}
 
 echo ""
 echo "✅ Sync complete!"

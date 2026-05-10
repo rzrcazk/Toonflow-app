@@ -194,8 +194,12 @@ class AiText {
   private async resolveModel(middleware?: any | any[]) {
     const switchAiDevTool = await u.db("o_setting").where("key", "switchAiDevTool").first();
     const modelName = await resolveModelName(this.AiType);
+    const [vendorId, vendorModelName] = modelName.split(/:(.+)/);
+    const vendorConfigData = await u.db("o_vendorConfig").where("id", vendorId).first();
+    console.log(`[AI_TRACE] resolveModel AiType=${this.AiType} modelName=${modelName} vendorName=${vendorConfigData?.name || 'unknown'} vendorId=${vendorId} model=${vendorModelName}`);
     const sdkFn = await getVendorTemplateFn("textRequest", modelName);
     const baseModel = await sdkFn(this.think, this.thinkLevel);
+    console.log(`[AI_TRACE] baseModel type=${typeof baseModel} keys=${JSON.stringify(Object.keys(baseModel))}`);
     const mws = [
       ...(switchAiDevTool?.value === "1" ? [devToolsMiddleware()] : []),
       ...(middleware ? (Array.isArray(middleware) ? middleware : [middleware]) : []),

@@ -161,7 +161,7 @@ const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3
   if (!vendor.inputValues.apiKey) throw new Error("缺少 API Key");
   const token = vendor.inputValues.apiKey;
   const baseUrl = vendor.inputValues.baseUrl;
-  return createOpenAICompatible({ baseURL: `${baseUrl}/v1`, apiKey: token }).chat(model.modelName);
+  return createOpenAICompatible({ baseURL: `${baseUrl}/v1`, apiKey: token }).chatModel(model.modelName);
 };
 
 const imageRequest = async (_config: ImageConfig, _model: ImageModel): Promise<string> => {

@@ -41,10 +41,10 @@ export default router.post(
     ),
     projectId: zod.number(),
     concurrentCount: zod.number().int().min(1).optional(),
-    otherTextPrompt: zod.string(),
+    otherTextPrompt: zod.string().optional(),
   }),
   async (req, res) => {
-    const { projectId, items, concurrentCount, otherTextPrompt } = req.body;
+    const { projectId, items, concurrentCount, otherTextPrompt = "" } = req.body;
     //获取风格
     const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
     //如果没有找到对应的项目，返回错误

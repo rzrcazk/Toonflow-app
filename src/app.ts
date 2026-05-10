@@ -15,6 +15,7 @@ import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
 import { isEletron } from "@/utils/getPath";
+import healthRouter from "@/routes/health/health";
 
 const app = express();
 const server = http.createServer(app);
@@ -109,7 +110,8 @@ export default async function startServe(randomPort: Boolean = false) {
     if (
       req.path === "/api/login/login" ||
       req.path === "/api/setting/loginConfig/getUser" ||
-      req.path === "/api/setting/loginConfig/updateUserPwd"
+      req.path === "/api/setting/loginConfig/updateUserPwd" ||
+      req.path === "/health"
     )
       return next();
 
@@ -125,6 +127,8 @@ export default async function startServe(randomPort: Boolean = false) {
 
   const router = await import("@/router");
   await router.default(app);
+
+  app.use("/health", healthRouter);
 
   // 404 处理
   app.use((_, res, next: NextFunction) => {

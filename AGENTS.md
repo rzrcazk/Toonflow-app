@@ -1,3 +1,16 @@
+# Toonflow 项目上下文
+
+## 项目结构
+当前目录 `toonflow-app/` 是后端项目，但完整项目包含：
+- `../toonflow-web/` - 前端 Vue 3 项目
+- `../toonflow-docker/` - Docker 运行时配置
+
+## 关键说明
+- 前端构建产物会复制到 `../toonflow-docker/data/web/`
+- 主要运行方式是通过 `../toonflow-docker/start.sh` 启动 Docker
+- 前端源码在 `../toonflow-web/src/`，不要去找编译后的文件
+- 开发时可分别启动前后端，生产环境统一使用 Docker
+
 # Toonflow 后端开发指南
 
 Express + TypeScript 后端，短剧/漫剧 AI 工具。

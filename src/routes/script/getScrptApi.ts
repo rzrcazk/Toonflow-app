@@ -17,8 +17,18 @@ export default router.post(
     if (name) {
       query = query.andWhere("name", "like", `%${name}%`);
     }
-
-    const data = await query;
+    // 按 name 去重，每个剧集名称只保留 id 最大（最新）的一条
+    const allScripts = await query;
+    const nameToLatest = new Map<string, typeof allScripts[0]>();
+    for (const row of allScripts) {
+      const n = row.name;
+      if (!n) continue;
+      const existing = nameToLatest.get(n);
+      if (!existing || row.id > existing.id) {
+        nameToLatest.set(n, row);
+      }
+    }
+    const data = Array.from(nameToLatest.values());
     const assetsData = await u
       .db("o_assets")
       .leftJoin("o_scriptAssets", "o_assets.id", "o_scriptAssets.assetsId")

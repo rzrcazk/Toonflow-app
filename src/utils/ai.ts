@@ -45,6 +45,10 @@ const AiTypeValues: AiType[] = [
   "animalVideoAgent:scriptAgent",
   "universalAi",
 ];
+function isReasoningModel(modelName: string): boolean {
+  return /^(o1|o3|o4|gpt-5)/i.test(modelName);
+}
+
 async function resolveModelName(value: AiType | `${string}:${string}`): Promise<`${string}:${string}`> {
   if (AiTypeValues.includes(value as AiType)) {
     const agentUseModeVal = await u.db("o_setting").where("key", "agentUseMode").first();
@@ -196,7 +200,7 @@ class AiText {
     const modelName = await resolveModelName(this.AiType);
     const [vendorId, vendorModelName] = modelName.split(/:(.+)/);
     const vendorConfigData = await u.db("o_vendorConfig").where("id", vendorId).first();
-    console.log(`[AI_TRACE] resolveModel AiType=${this.AiType} modelName=${modelName} vendorName=${vendorConfigData?.name || 'unknown'} vendorId=${vendorId} model=${vendorModelName}`);
+    console.log(`[AI_TRACE] resolveModel AiType=${this.AiType} modelName=${modelName} vendorName=${vendorConfigData?.name || 'N/A'} vendorId=${vendorId} model=${vendorModelName} dbMatched=${!!vendorConfigData}`);
     const sdkFn = await getVendorTemplateFn("textRequest", modelName);
     const baseModel = await sdkFn(this.think, this.thinkLevel);
     console.log(`[AI_TRACE] baseModel type=${typeof baseModel} keys=${JSON.stringify(Object.keys(baseModel))}`);
@@ -209,6 +213,8 @@ class AiText {
   async invoke(input: Omit<Parameters<typeof generateText>[0], "model">) {
     const config = await getModelConfig(this.AiType);
     const modelName = await resolveModelName(this.AiType);
+    const [, vendorModelName] = modelName.split(/:(.+)/);
+    const isReasoning = isReasoningModel(vendorModelName);
 
     // AI 调用详细日志（通过 AI_DEBUG=1 环境变量启用）
     const enableDebug = process.env.AI_DEBUG === "1";
@@ -221,7 +227,7 @@ class AiText {
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(),
-      ...(config?.temperature && { temperature: config?.temperature }),
+      ...(!isReasoning && config?.temperature && { temperature: config?.temperature }),
       ...(config?.maxOutputTokens && { maxOutputTokens: config?.maxOutputTokens }),
     } as Parameters<typeof generateText>[0]);
 
@@ -233,12 +239,15 @@ class AiText {
   }
   async stream(input: Omit<Parameters<typeof streamText>[0], "model">) {
     const config = await getModelConfig(this.AiType);
+    const modelName = await resolveModelName(this.AiType);
+    const [, vendorModelName] = modelName.split(/:(.+)/);
+    const isReasoning = isReasoningModel(vendorModelName);
 
     return streamText({
       ...(input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) }),
       ...input,
       model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-      ...(config?.temperature && { temperature: config?.temperature }),
+      ...(!isReasoning && config?.temperature && { temperature: config?.temperature }),
       ...(config?.maxOutputTokens && { maxOutputTokens: config?.maxOutputTokens }),
     } as Parameters<typeof streamText>[0]);
   }

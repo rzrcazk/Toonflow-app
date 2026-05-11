@@ -139844,13 +139844,13 @@ var init_dist3 = __esm({
 function getOpenAILanguageModelCapabilities(modelId) {
   const supportsFlexProcessing = modelId.startsWith("o3") || modelId.startsWith("o4-mini") || modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat");
   const supportsPriorityProcessing = modelId.startsWith("gpt-4") || modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-nano") && !modelId.startsWith("gpt-5-chat") && !modelId.startsWith("gpt-5.4-nano") || modelId.startsWith("o3") || modelId.startsWith("o4-mini");
-  const isReasoningModel = modelId.startsWith("o1") || modelId.startsWith("o3") || modelId.startsWith("o4-mini") || modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat");
+  const isReasoningModel2 = modelId.startsWith("o1") || modelId.startsWith("o3") || modelId.startsWith("o4-mini") || modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat");
   const supportsNonReasoningParameters = modelId.startsWith("gpt-5.1") || modelId.startsWith("gpt-5.2") || modelId.startsWith("gpt-5.3") || modelId.startsWith("gpt-5.4");
-  const systemMessageMode = isReasoningModel ? "developer" : "system";
+  const systemMessageMode = isReasoningModel2 ? "developer" : "system";
   return {
     supportsFlexProcessing,
     supportsPriorityProcessing,
-    isReasoningModel,
+    isReasoningModel: isReasoningModel2,
     systemMessageMode,
     supportsNonReasoningParameters
   };
@@ -141800,14 +141800,14 @@ var init_dist4 = __esm({
           schema: openaiLanguageModelChatOptions
         })) != null ? _a31 : {};
         const modelCapabilities = getOpenAILanguageModelCapabilities(this.modelId);
-        const isReasoningModel = (_b27 = openaiOptions.forceReasoning) != null ? _b27 : modelCapabilities.isReasoningModel;
+        const isReasoningModel2 = (_b27 = openaiOptions.forceReasoning) != null ? _b27 : modelCapabilities.isReasoningModel;
         if (topK != null) {
           warnings.push({ type: "unsupported", feature: "topK" });
         }
         const { messages, warnings: messageWarnings } = convertToOpenAIChatMessages(
           {
             prompt,
-            systemMessageMode: (_c = openaiOptions.systemMessageMode) != null ? _c : isReasoningModel ? "developer" : modelCapabilities.systemMessageMode
+            systemMessageMode: (_c = openaiOptions.systemMessageMode) != null ? _c : isReasoningModel2 ? "developer" : modelCapabilities.systemMessageMode
           }
         );
         warnings.push(...messageWarnings);
@@ -141853,7 +141853,7 @@ var init_dist4 = __esm({
           // messages:
           messages
         };
-        if (isReasoningModel) {
+        if (isReasoningModel2) {
           if (openaiOptions.reasoningEffort !== "none" || !modelCapabilities.supportsNonReasoningParameters) {
             if (baseArgs.temperature != null) {
               baseArgs.temperature = void 0;
@@ -144578,7 +144578,7 @@ var init_dist4 = __esm({
             schema: openaiLanguageModelResponsesOptionsSchema
           });
         }
-        const isReasoningModel = (_a31 = openaiOptions == null ? void 0 : openaiOptions.forceReasoning) != null ? _a31 : modelCapabilities.isReasoningModel;
+        const isReasoningModel2 = (_a31 = openaiOptions == null ? void 0 : openaiOptions.forceReasoning) != null ? _a31 : modelCapabilities.isReasoningModel;
         if ((openaiOptions == null ? void 0 : openaiOptions.conversation) && (openaiOptions == null ? void 0 : openaiOptions.previousResponseId)) {
           warnings.push({
             type: "unsupported",
@@ -144616,7 +144616,7 @@ var init_dist4 = __esm({
         const { input, warnings: inputWarnings } = await convertToOpenAIResponsesInput({
           prompt,
           toolNameMapping,
-          systemMessageMode: (_b27 = openaiOptions == null ? void 0 : openaiOptions.systemMessageMode) != null ? _b27 : isReasoningModel ? "developer" : modelCapabilities.systemMessageMode,
+          systemMessageMode: (_b27 = openaiOptions == null ? void 0 : openaiOptions.systemMessageMode) != null ? _b27 : isReasoningModel2 ? "developer" : modelCapabilities.systemMessageMode,
           providerOptionsName,
           fileIdPrefixes: this.config.fileIdPrefixes,
           store: (_c = openaiOptions == null ? void 0 : openaiOptions.store) != null ? _c : true,
@@ -144653,7 +144653,7 @@ var init_dist4 = __esm({
           addInclude("code_interpreter_call.outputs");
         }
         const store = openaiOptions == null ? void 0 : openaiOptions.store;
-        if (store === false && isReasoningModel) {
+        if (store === false && isReasoningModel2) {
           addInclude("reasoning.encrypted_content");
         }
         const baseArgs = {
@@ -144695,7 +144695,7 @@ var init_dist4 = __esm({
           top_logprobs: topLogprobs,
           truncation: openaiOptions == null ? void 0 : openaiOptions.truncation,
           // model-specific settings:
-          ...isReasoningModel && ((openaiOptions == null ? void 0 : openaiOptions.reasoningEffort) != null || (openaiOptions == null ? void 0 : openaiOptions.reasoningSummary) != null) && {
+          ...isReasoningModel2 && ((openaiOptions == null ? void 0 : openaiOptions.reasoningEffort) != null || (openaiOptions == null ? void 0 : openaiOptions.reasoningSummary) != null) && {
             reasoning: {
               ...(openaiOptions == null ? void 0 : openaiOptions.reasoningEffort) != null && {
                 effort: openaiOptions.reasoningEffort
@@ -144706,7 +144706,7 @@ var init_dist4 = __esm({
             }
           }
         };
-        if (isReasoningModel) {
+        if (isReasoningModel2) {
           if (!((openaiOptions == null ? void 0 : openaiOptions.reasoningEffort) === "none" && modelCapabilities.supportsNonReasoningParameters)) {
             if (baseArgs.temperature != null) {
               baseArgs.temperature = void 0;
@@ -235740,6 +235740,9 @@ var init_dist23 = __esm({
 });
 
 // src/utils/ai.ts
+function isReasoningModel(modelName) {
+  return /^(o1|o3|o4|gpt-5)/i.test(modelName);
+}
 async function resolveModelName(value) {
   if (AiTypeValues.includes(value)) {
     const agentUseModeVal = await utils_default2.db("o_setting").where("key", "agentUseMode").first();
@@ -235896,8 +235899,12 @@ var init_ai = __esm({
       async resolveModel(middleware) {
         const switchAiDevTool = await utils_default2.db("o_setting").where("key", "switchAiDevTool").first();
         const modelName = await resolveModelName(this.AiType);
+        const [vendorId, vendorModelName] = modelName.split(/:(.+)/);
+        const vendorConfigData = await utils_default2.db("o_vendorConfig").where("id", vendorId).first();
+        console.log(`[AI_TRACE] resolveModel AiType=${this.AiType} modelName=${modelName} vendorName=${vendorConfigData?.name || "unknown"} vendorId=${vendorId} model=${vendorModelName}`);
         const sdkFn = await getVendorTemplateFn("textRequest", modelName);
         const baseModel = await sdkFn(this.think, this.thinkLevel);
+        console.log(`[AI_TRACE] baseModel type=${typeof baseModel} keys=${JSON.stringify(Object.keys(baseModel))}`);
         const mws = [
           ...switchAiDevTool?.value === "1" ? [devToolsMiddleware()] : [],
           ...middleware ? Array.isArray(middleware) ? middleware : [middleware] : []
@@ -235907,6 +235914,8 @@ var init_ai = __esm({
       async invoke(input) {
         const config3 = await getModelConfig(this.AiType);
         const modelName = await resolveModelName(this.AiType);
+        const [, vendorModelName] = modelName.split(/:(.+)/);
+        const isReasoning = isReasoningModel(vendorModelName);
         const enableDebug = process.env.AI_DEBUG === "1";
         if (enableDebug) {
           console.log(`[AI_DEBUG] Text invoke - Model: ${modelName}`);
@@ -235916,7 +235925,7 @@ var init_ai = __esm({
           ...input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) },
           ...input,
           model: await this.resolveModel(),
-          ...config3?.temperature && { temperature: config3?.temperature },
+          ...!isReasoning && config3?.temperature && { temperature: config3?.temperature },
           ...config3?.maxOutputTokens && { maxOutputTokens: config3?.maxOutputTokens }
         });
         if (enableDebug) {
@@ -235926,11 +235935,14 @@ var init_ai = __esm({
       }
       async stream(input) {
         const config3 = await getModelConfig(this.AiType);
+        const modelName = await resolveModelName(this.AiType);
+        const [, vendorModelName] = modelName.split(/:(.+)/);
+        const isReasoning = isReasoningModel(vendorModelName);
         return streamText({
           ...input.tools && { stopWhen: stepCountIs(Object.keys(input.tools).length * 50) },
           ...input,
           model: await this.resolveModel(extractReasoningMiddleware({ tagName: "reasoning_content", separator: "\n" })),
-          ...config3?.temperature && { temperature: config3?.temperature },
+          ...!isReasoning && config3?.temperature && { temperature: config3?.temperature },
           ...config3?.maxOutputTokens && { maxOutputTokens: config3?.maxOutputTokens }
         });
       }
@@ -237600,10 +237612,10 @@ var init_batchPolishAssetsPrompt = __esm({
         ),
         projectId: number2(),
         concurrentCount: number2().int().min(1).optional(),
-        otherTextPrompt: string2()
+        otherTextPrompt: string2().optional()
       }),
       async (req, res) => {
-        const { projectId, items, concurrentCount, otherTextPrompt } = req.body;
+        const { projectId, items, concurrentCount, otherTextPrompt = "" } = req.body;
         const project = await utils_default2.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
         if (!project) return res.status(500).send(success3({ message: "\u9879\u76EE\u4E3A\u7A7A" }));
         const assetsIds = items.map((item) => item.assetsId);

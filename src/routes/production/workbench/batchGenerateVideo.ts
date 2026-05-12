@@ -54,6 +54,7 @@ export default router.post(
 
     // 获取生成视频比例
     const ratio = await u.db("o_project").select("videoRatio").where("id", projectId).first();
+    const ossInternalUrl = (process.env.OSS_INTERNAL_URL || "http://toonflow-app:10588").replace(/\/$/, "");
 
     // 为每个 track 预处理数据并插入数据库，返回任务列表
     const tasks = await Promise.all(
@@ -96,10 +97,19 @@ export default router.post(
     res.status(200).send(success(tasks.map((t) => ({ videoId: t.videoId, trackId: t.trackId }))));
     for (const { videoId, videoPath, prompt, duration, images } of tasks) {
       // 所有任务全部并发后台执行，完全不阻塞任何进程
-      const base64 = await Promise.all(
+      const referenceList = await Promise.all(
         images.map(async (item) => {
           if (!item) return null;
-          return { base64: await u.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
+          if (!item.path) return null;
+          const type = item.sources == "audio" ? "audio" : "image";
+          const base64 = await u.oss.getImageBase64(item.path);
+          if (type !== "image") return { base64, type };
+          return {
+            base64,
+            type,
+            sourceType: "url" as const,
+            url: `${ossInternalUrl}/oss/${item.path.replace(/^\//, "")}`,
+          };
         }),
       );
       const relatedObjects = { projectId, videoId, scriptId, type: "视频" };
@@ -108,7 +118,7 @@ export default router.post(
         .run(
           {
             prompt,
-            referenceList: base64.filter(Boolean) as ReferenceList[],
+            referenceList: referenceList.filter(Boolean) as ReferenceList[],
             mode: modeData.length > 0 ? modeData : mode,
             duration,
             aspectRatio: (ratio?.videoRatio as "16:9" | "9:16") || "16:9",

@@ -53,7 +53,7 @@ export default router.post(
 
     // 一次性查询出图片 filePath，同时生成 URL 和 base64
     // URL 给 qwen2api 等用（必须是外部可访问的公网地址），base64 给 jimeng 等用（兼容旧逻辑）
-    const ossInternalUrl = process.env.OSS_INTERNAL_URL || `http://localhost:10588`;
+    const ossInternalUrl = (process.env.OSS_INTERNAL_URL || "http://toonflow-app:10588").replace(/\/$/, "");
     const imagePaths: string[] = [];
     await Promise.all(
       uploadData.map(async (item: UploadItem) => {
@@ -75,7 +75,7 @@ export default router.post(
     );
 
     const validPaths = imagePaths.filter(Boolean);
-    const imageUrls = validPaths.map((p) => `${ossInternalUrl}/oss/${p.replace(/^\//, '')}`);
+    const imageUrls = validPaths.map((p) => `${ossInternalUrl}/oss/${p.replace(/^\//, "")}`);
     const base64List: (string | null)[] = await Promise.all(
       validPaths.map(async (p) => await u.oss.getImageBase64(p)),
     );

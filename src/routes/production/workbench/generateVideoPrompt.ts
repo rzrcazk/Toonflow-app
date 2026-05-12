@@ -19,7 +19,7 @@ export default router.post(
     // 用户选择的文本 LLM 模型（用于生成视频提示词）
     model: z.string(),
     // 用户选择的视频模型（提示词将用于该视频模型）
-    videoModel: z.string(),
+    videoModel: z.string().optional().nullable(),
   }),
   async (req, res) => {
     const { trackId, projectId, info, model, videoModel } = req.body;
@@ -81,8 +81,12 @@ export default router.post(
         });
     }
 
+    const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
+    const targetVideoModel = videoModel || projectData?.videoModel || model;
+    if (!targetVideoModel) return res.status(400).send(error("项目未配置视频模型"));
+
     // 解析视频模型信息
-    const [videoVendorId, videoModelName] = videoModel.split(/:(.+)/);
+    const [videoVendorId, videoModelName] = targetVideoModel.split(/:(.+)/);
     // 获取视频模型的配置（mode 等）
     let videoModelMode: string[] = [];
     let videoModelVendorName = "";
@@ -97,7 +101,6 @@ export default router.post(
       console.error("[generateVideoPrompt] 获取视频模型配置失败:", e);
     }
 
-    const projectData = await u.db("o_project").select("*").where({ id: projectId }).first();
     const videoPrompt = await u.db("o_prompt").where("type", "videoPromptGeneration").first();
     let videoPromptGeneration = "" as string | undefined;
     if (videoPrompt && videoPrompt.useData) {
@@ -123,7 +126,7 @@ export default router.post(
       : String(videoModelMode || "未指定模式");
 
     const content = `
-          **目标视频模型**：${videoModelName || videoModel},
+          **目标视频模型**：${videoModelName || targetVideoModel},
           **视频供应商**：${videoModelVendorName || "未知"},
           **视频模型模式**：${modeDescription},
           **资产信息**（角色、场景、道具):${assets
@@ -139,8 +142,17 @@ export default router.post(
           `;
 
     try {
+      let promptTextModel = model;
+      try {
+        const [modelVendorId, modelName] = model.split(/:(.+)/);
+        const modelConfig = await u.vendor.getModelList(modelVendorId);
+        const foundModel = modelConfig.find((m: any) => m.modelName === modelName);
+        if (foundModel?.type !== "text") promptTextModel = "universalAi";
+      } catch {
+        promptTextModel = "universalAi";
+      }
       // 使用前端传入的文本 LLM 模型生成提示词
-      const { text } = await u.Ai.Text(model).invoke({
+      const { text } = await u.Ai.Text(promptTextModel).invoke({
         system: videoPromptGeneration,
         messages: [
           {

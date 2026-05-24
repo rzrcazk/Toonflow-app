@@ -126,7 +126,13 @@ async function getVendorTemplateFn(fnName: FnName, modelName: `${string}:${strin
   const jsCode = transform(code, { transforms: ["typescript"] }).code;
   const running = u.vm(jsCode);
   if (running.vendor) {
-    Object.assign(running.vendor.inputValues, JSON.parse(vendorConfigData.inputValues ?? "{}"));
+    let inputValues: Record<string, any>;
+    try {
+      inputValues = JSON.parse(vendorConfigData.inputValues ?? "{}");
+    } catch {
+      throw new Error(`供应商配置解析失败 id=${id}：inputValues 不是合法 JSON`);
+    }
+    Object.assign(running.vendor.inputValues, inputValues);
     running.vendor.models = modelList;
   }
   const fn = running[fnName];
@@ -221,13 +227,19 @@ class AiText {
 function referenceList2imageBase642(id: string, input: any) {
   const version = u.vendor.getVendor(id).version;
   if (!version || isNaN(parseFloat(version)) || parseFloat(version) < 2.0) {
-    input.imageBase64 = input.referenceList.map((item: any) => item.base64);
+    input.imageBase64 = (input.referenceList ?? []).map((item: any) => item.base64).filter(Boolean);
     return input;
   }
   return input;
 }
 
-export type ReferenceList = { type: "image"; base64: string } | { type: "audio"; base64: string } | { type: "video"; base64: string };
+export type ReferenceList =
+  | { type: "image"; sourceType?: "base64"; base64: string }
+  | { type: "audio"; sourceType?: "base64"; base64: string }
+  | { type: "video"; sourceType?: "base64"; base64: string }
+  | { type: "image"; sourceType: "url"; url: string }
+  | { type: "audio"; sourceType: "url"; url: string }
+  | { type: "video"; sourceType: "url"; url: string };
 
 interface ImageConfig {
   prompt: string;

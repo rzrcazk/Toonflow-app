@@ -14,3 +14,14 @@ env
 docs
 *.log
 .env*
+version.txt
+.claw
+.claude
+.agents
+.sandbox-home
+.sandbox-tmp
+data/*.db
+data/*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+branch-diff-dashboard.html

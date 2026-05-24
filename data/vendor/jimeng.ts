@@ -220,7 +220,7 @@ const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<str
     }
 
     logger(`即梦图生图，模型：${model.modelName}，参考图：${config.referenceList!.length} 张`);
-    const resp = await axios.post(`${baseUrl}/v1/images/generations`, formData, {
+    const resp = await axios.post(`${baseUrl}/v1/images/compositions`, formData, {
       headers: {
         Authorization: `Bearer ${vendor.inputValues.sessionid}`,
         ...(formData as any).getHeaders(),

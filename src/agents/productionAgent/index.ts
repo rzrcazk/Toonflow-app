@@ -6,6 +6,8 @@ import Memory from "@/utils/agent/memory";
 import { createSkillTools, parseFrontmatter, scanSkills, useSkill } from "@/utils/agent/skillsTools";
 import useTools from "@/agents/productionAgent/tools";
 import ResTool from "@/socket/resTool";
+import { buildVideoDurationPrompt, getVideoDurationPolicy } from "@/utils/videoDuration";
+import { getManualSubDir } from "@/utils/manuals";
 import * as fs from "fs";
 import path from "path";
 
@@ -31,11 +33,11 @@ function buildMemPrompt(mem: Awaited<ReturnType<Memory["get"]>>): string {
   }
   if (mem.summaries.length) {
     if (memoryContext) memoryContext += "\n\n";
-    memoryContext += `[历史摘要]\n${mem.summaries.map((s, i) => `${i + 1}. ${s.content}`).join("\n")}`;
+    memoryContext += `[历史摘要]\n${mem.summaries.map((s: { content: string }, i: number) => `${i + 1}. ${s.content}`).join("\n")}`;
   }
   if (mem.shortTerm.length) {
     if (memoryContext) memoryContext += "\n\n";
-    memoryContext += `[近期对话]\n${mem.shortTerm.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
+    memoryContext += `[近期对话]\n${mem.shortTerm.map((m: { role?: string | null; content: string }) => `${m.role}: ${m.content}`).join("\n")}`;
   }
   return `## Memory\n以下是你对用户的记忆，可作为参考但不要主动提及：\n${memoryContext}`;
 }
@@ -59,7 +61,8 @@ export async function runDecisionAI(ctx: AgentContext) {
   })();
   console.log("%c Line:67 🍪 isRef", "background:#fca650", isRef);
 
-  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
+  const videoDurationInfo = buildVideoDurationPrompt(await getVideoDurationPolicy(projectInfo.videoModel!));
+  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}\n\n${videoDurationInfo}`;
 
   const mem = buildMemPrompt(await memory.get(text));
 
@@ -151,7 +154,8 @@ async function createSubAgent(parentCtx: AgentContext) {
   })();
   console.log("%c Line:153 🥤 isRef", "background:#42b983", isRef);
 
-  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}`;
+  const videoDurationInfo = buildVideoDurationPrompt(await getVideoDurationPolicy(projectInfo.videoModel!));
+  const modelInfo = `项目使用的模型如下：\n图像模型：${imageModelName}\n视频模型：${videoModelName}\n多参：${isRef ? "是" : "否"}\n\n${videoDurationInfo}`;
 
   // const run_sub_agent_execution = tool({
   //   description: "执行层子Agent，负责衍生资产、",
@@ -365,8 +369,8 @@ async function createSubAgent(parentCtx: AgentContext) {
 }
 
 async function createArtSkills(artName: string, storyName: string) {
-  const artWorkerPath = u.getPath(["skills", "art_skills", artName, "driector_skills"]);
-  const storyWorkerPath = u.getPath(["skills", "story_skills", storyName, "driector_skills"]);
+  const artWorkerPath = getManualSubDir(u.getPath(["skills", "art_skills", artName]));
+  const storyWorkerPath = getManualSubDir(u.getPath(["skills", "story_skills", storyName]));
   const skillList = [...(await scanSkills(artWorkerPath + "/*.md")), ...(await scanSkills(storyWorkerPath + "/*.md"))];
   const mainSkills: { path: string; name: string; description: string }[] = [];
   for (const skillPath of skillList) {
@@ -453,8 +457,8 @@ ${skillEntries}
 }
 
 async function useProductionSkills(artName: string, storyName: string) {
-  const artWorkerPath = u.getPath(["skills", "art_skills", artName, "driector_skills"]);
-  const storyWorkerPath = u.getPath(["skills", "story_skills", storyName, "driector_skills"]);
+  const artWorkerPath = getManualSubDir(u.getPath(["skills", "art_skills", artName]));
+  const storyWorkerPath = getManualSubDir(u.getPath(["skills", "story_skills", storyName]));
   const productionPath = u.getPath(["skills", "production_skills"]);
   const skillList = [
     ...(await scanSkills(artWorkerPath + "/*.md")),

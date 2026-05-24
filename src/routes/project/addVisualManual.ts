@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
+import { ART_MANUAL_FIELDS, getManualFieldPath, validateManualDirName } from "@/utils/manuals";
 const router = express.Router();
 
 // 新增视觉手册
@@ -31,43 +32,27 @@ export default router.post(
         stylePath: string;
       };
 
-      // 安全校验：不允许包含路径分隔符、纯数字，防止越级删除或误删项目目录
-      if (name.includes("/") || name.includes("\\") || name === "." || name === ".." || /^\d+$/.test(name)) {
-        res.status(400).send(error("名称不能包含路径分隔符或为纯数字"));
+      const nameError = validateManualDirName(name);
+      const pathError = validateManualDirName(stylePath);
+      if (nameError || pathError) {
+        res.status(400).send(error(nameError ?? pathError!));
         return;
       }
       const mainPath = u.getPath(["skills", "art_skills", stylePath]);
       if (fs.existsSync(mainPath)) {
         return res.status(400).send(error("请勿填写重复名称的视觉手册"));
       }
-      // 字段映射表（与 getVisualManual 保持一致）
-      const DATA_MAP: { value: string; subDir?: string }[] = [
-        { value: "README" },
-        { value: "prefix" },
-        { value: "art_character", subDir: "art_prompt" },
-        { value: "art_character_derivative", subDir: "art_prompt" },
-        { value: "art_prop", subDir: "art_prompt" },
-        { value: "art_prop_derivative", subDir: "art_prompt" },
-        { value: "art_scene", subDir: "art_prompt" },
-        { value: "art_scene_derivative", subDir: "art_prompt" },
-        { value: "director_storyboard", subDir: "driector_skills" },
-        { value: "art_storyboard_video", subDir: "art_prompt" },
-        { value: "director_planning_style", subDir: "driector_skills" },
-        { value: "director_storyboard_table_style", subDir: "driector_skills" },
-      ];
-
       // 根据 DATA_MAP 构建 value -> subDir 的映射
-      const SUB_DIR_MAP = new Map(DATA_MAP.map(({ value, subDir }) => [value, subDir ?? ""]));
+      const FIELD_MAP = new Map(ART_MANUAL_FIELDS.map((field) => [field.value, field]));
 
       // 合法的 value 值集合，用于校验
-      const VALID_KEYS = new Set(DATA_MAP.map(({ value }) => value));
+      const VALID_KEYS = new Set(ART_MANUAL_FIELDS.map(({ value }) => value));
 
       for (const item of data) {
         if (!VALID_KEYS.has(item.value)) continue;
 
-        const subDir = SUB_DIR_MAP.get(item.value)!;
-        const dirArr = subDir ? [mainPath, subDir] : [mainPath];
-        const filePath = u.getPath([...dirArr, `${item.value}.md`]);
+        const field = FIELD_MAP.get(item.value)!;
+        const filePath = getManualFieldPath(mainPath, field);
 
         const fileDir = path.dirname(filePath);
         // 目录不存在时递归创建

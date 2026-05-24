@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { buildDeriveAssetPromptMessages } from "@/utils/deriveAssetPrompt";
 const router = express.Router();
 
 export default router.post(
@@ -72,21 +73,26 @@ export default router.post(
     const generateSingleAsset = async (item: any) => {
       const imageId = imageIdMap[item.id!];
       const typeConfig = promptRecord[item.type!] || promptRecord["role"];
+      const imageBase64 = imageUrlRecord[item.assetsId!] ? await u.oss.getImageBase64(imageUrlRecord[item.assetsId!]) : null;
+      const promptMessages = buildDeriveAssetPromptMessages({
+        typePrompt: typeConfig.prompt,
+        assetType: item.type!,
+        parentDescribe: item.parentDescribe,
+        describe: item.describe,
+        hasParentImage: Boolean(imageBase64),
+      });
 
       const { text } = await u.Ai.Text("universalAi").invoke({
-        system: `${typeConfig.prompt}`,
+        system: promptMessages.system,
         messages: [
           {
             role: "user",
-            content: `
-            父级资产描述：${item.parentDescribe || "无详细描述"}
-            当前资产描述：${item.describe || "无详细描述"}`,
+            content: promptMessages.user,
           },
         ],
       });
       await u.db("o_assets").where("id", item.id).update({ prompt: text });
 
-      const imageBase64 = imageUrlRecord[item.assetsId!] ? await u.oss.getImageBase64(imageUrlRecord[item.assetsId!]) : null;
       try {
         const repeloadObj = {
           prompt: text,
@@ -95,7 +101,7 @@ export default router.post(
         };
         const imageCls = await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`).run(
           {
-            referenceList: imageBase64 ? [{ type: "image", base64: imageBase64 }] : [],
+            referenceList: imageBase64 ? [{ type: "image", sourceType: "base64", base64: imageBase64 }] : [],
             ...repeloadObj,
           },
           {

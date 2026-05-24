@@ -26,9 +26,13 @@ const DEFAULTS: {
 function vectorSearch(rows: MemoryRow[], queryEmbedding: number[], limit: number) {
   return rows
     .map((row) => {
-      const emb: number[] = JSON.parse(row.embedding ?? "[]");
+      let emb: number[] = [];
+      try {
+        emb = JSON.parse(row.embedding ?? "[]");
+      } catch {}
       return { ...row, similarity: cosineSimilarity(queryEmbedding, emb) };
     })
+    .filter((row) => Number.isFinite(row.similarity))
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, limit);
 }
@@ -109,8 +113,8 @@ class Memory {
 
     if (unsummarized.length >= Number(messagesPerSummary)) {
       const batch = unsummarized.slice(0, Number(messagesPerSummary));
-      const batchIds = batch.map((m) => m.id);
-      const batchContents = batch.map((m) => m.content);
+      const batchIds = batch.map((m: MemoryRow) => m.id);
+      const batchContents = batch.map((m: MemoryRow) => m.content);
 
       const summaryContent = await this.generateSummary(batchContents);
       const summaryEmbedding = await getEmbedding(summaryContent);
@@ -160,7 +164,7 @@ class Memory {
 
     return {
       shortTerm: shortTerm.map((m: any) => ({ id: m.id, role: m.role, name: m.name, content: m.content, createTime: m.createTime })),
-      summaries: summaries.map((s) => ({
+      summaries: summaries.map((s: MemoryRow) => ({
         id: s.id,
         content: s.content,
         relatedMessageIds: JSON.parse(s.relatedMessageIds || "[]"),
@@ -190,14 +194,14 @@ class Memory {
     if (relevantIds.length === 0) return [];
 
     // 步骤3: 展开查询原始 messages
-    const relevantSummaries = topSummaries.filter((s) => relevantIds.includes(s.id!));
+    const relevantSummaries = topSummaries.filter((s: MemoryRow & { similarity: number }) => relevantIds.includes(s.id!));
     const messageIds = relevantSummaries.flatMap((s) => JSON.parse(s.relatedMessageIds || "[]") as string[]);
 
     if (messageIds.length === 0) return [];
 
     const messages = await u.db("memories").whereIn("id", messageIds).orderBy("createTime", "asc");
 
-    return messages.map((m) => ({ id: m.id, content: m.content, createTime: m.createTime }));
+    return messages.map((m: MemoryRow) => ({ id: m.id, content: m.content, createTime: m.createTime }));
   }
 
   getTools() {
@@ -214,7 +218,7 @@ class Memory {
         execute: async ({ keyword }) => {
           const results = await this.deepRetrieve(keyword);
           if (results.length === 0) return { found: false, message: "未找到相关记忆" };
-          return { found: true, memories: results.map((r) => r.content) };
+          return { found: true, memories: results.map((r: { content: string }) => r.content) };
         },
       }),
     };

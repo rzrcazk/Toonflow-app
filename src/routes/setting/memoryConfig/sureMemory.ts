@@ -15,14 +15,28 @@ export default router.post(
     summaryLimit: z.number(),
     ragLimit: z.number(),
     deepRetrieveSummaryLimit: z.number(),
+    embeddingProvider: z.enum(["local", "openai"]).optional(),
+    embeddingModel: z.string().optional(),
+    embeddingDimensions: z.number().optional(),
     modelOnnxFile: z.array(z.string()),
     modelDtype: z.string(),
   }),
   async (req, res) => {
-    const { messagesPerSummary, shortTermLimit, summaryMaxLength, summaryLimit, ragLimit, deepRetrieveSummaryLimit, modelOnnxFile, modelDtype } =
-      req.body;
+    const {
+      messagesPerSummary,
+      shortTermLimit,
+      summaryMaxLength,
+      summaryLimit,
+      ragLimit,
+      deepRetrieveSummaryLimit,
+      embeddingProvider,
+      embeddingModel,
+      embeddingDimensions,
+      modelOnnxFile,
+      modelDtype,
+    } = req.body;
 
-    const upsert = async (key: string, value: string) => {
+    const upsert = async (key: string, value: string | number) => {
       const exists = await u.db("o_setting").where("key", key).first();
       if (exists) {
         await u.db("o_setting").where("key", key).update({ value });
@@ -37,6 +51,9 @@ export default router.post(
     await upsert("summaryLimit", summaryLimit);
     await upsert("ragLimit", ragLimit);
     await upsert("deepRetrieveSummaryLimit", deepRetrieveSummaryLimit);
+    if (embeddingProvider) await upsert("embeddingProvider", embeddingProvider);
+    if (embeddingModel) await upsert("embeddingModel", embeddingModel);
+    if (embeddingDimensions !== undefined) await upsert("embeddingDimensions", String(embeddingDimensions));
     await upsert("modelOnnxFile", JSON.stringify(modelOnnxFile));
     await upsert("modelDtype", modelDtype);
 

@@ -115,9 +115,10 @@ async function createVendorConfigTable(knex: Knex) {
 async function createModelPromptTable(knex: Knex) {
   await knex.schema.createTableIfNotExists("o_modelPrompt", (table) => {
     table.increments("id").primary();
-    table.string("modelId").notNullable();
-    table.string("type").notNullable();
-    table.text("prompt").nullable();
+    table.string("vendorId").nullable();
+    table.string("model").nullable();
+    table.text("fileName").nullable();
+    table.text("path").nullable();
     table.timestamp("created_at").defaultTo(knex.fn.now());
     table.timestamp("updated_at").defaultTo(knex.fn.now());
   });

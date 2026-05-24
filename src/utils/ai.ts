@@ -262,7 +262,7 @@ function referenceList2imageBase642(id: string, input: any) {
   return input;
 }
 
-type ReferenceList = { type: "image"; sourceType: "base64"; base64: string } | { type: "audio"; sourceType: "base64"; base64: string } | { type: "video"; sourceType: "base64"; base64: string } | { type: "image"; sourceType: "url"; url: string } | { type: "audio"; sourceType: "url"; url: string } | { type: "video"; sourceType: "url"; url: string };
+export type ReferenceList = { type: "image"; sourceType: "base64"; base64: string } | { type: "audio"; sourceType: "base64"; base64: string } | { type: "video"; sourceType: "base64"; base64: string } | { type: "image"; sourceType: "url"; url: string } | { type: "audio"; sourceType: "url"; url: string } | { type: "video"; sourceType: "url"; url: string };
 
 interface ImageConfig {
   prompt: string;

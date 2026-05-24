@@ -3,6 +3,7 @@ import u from "@/utils";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { buildRoleDifferenceContext } from "@/utils/rolePromptDifferentiation";
 const router = express.Router();
 
 
@@ -28,7 +29,7 @@ export default router.post(
     await u.db("o_assets").where("id", assetsId).update({ promptState: "生成中" });
 
     //查询资产是否是衍生资产
-    const assetsData = await u.db("o_assets").where("id", assetsId).select("assetsId").first();
+    const assetsData = await u.db("o_assets").where("id", assetsId).select("id", "assetsId", "describe", "prompt").first();
     if (!assetsData) return { code: 500, message: "资产不存在" };
     const typeConfig: Record<string, { promptKey: string; itemType: ItemType; label: string; nameLabel: string; visualManual: string }> = {
       role: {
@@ -62,6 +63,15 @@ export default router.post(
     if (!visualManual) return res.status(500).send(error("视觉手册未定义"));
     const systemPrompt = visualManual;
     try {
+      const effectiveDescribe = assetsData.describe || describe;
+      const roleDifferenceContext =
+        type === "role"
+          ? buildRoleDifferenceContext(
+              project,
+              { id: assetsId, name, describe: effectiveDescribe, prompt: assetsData.prompt },
+              await u.db("o_assets").where({ projectId, type: "role" }).whereNull("assetsId").select("id", "name", "describe", "prompt"),
+            )
+          : "";
       const { _output } = (await u.Ai.Text("universalAi").invoke({
         system: systemPrompt,
         messages: [
@@ -70,7 +80,7 @@ export default router.post(
             content: `**基础参数：**
       **${config.nameLabel}设定：**
       - ${config.nameLabel}名称:${name},
-      - ${config.nameLabel}描述:${describe},`,
+      - ${config.nameLabel}描述:${effectiveDescribe},${roleDifferenceContext}`,
           },
         ],
       })) as any;

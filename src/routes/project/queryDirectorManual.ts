@@ -3,14 +3,8 @@ import u from "@/utils";
 import { success } from "@/lib/responseFormat";
 import fs from "fs";
 import path from "path";
+import { DIRECTOR_MANUAL_FIELDS, getManualFieldPath } from "@/utils/manuals";
 const router = express.Router();
-
-// 字段映射表
-const DATA_MAP: { label: string; value: string; subDir?: string }[] = [
-  { label: "README", value: "README" },
-  { label: "导演规划", value: "director_planning_narrative", subDir: "driector_skills" },
-  { label: "分镜表", value: "director_storyboard_table_narrative", subDir: "driector_skills" },
-];
 
 // 读取 md 文件内容，文件不存在时返回空字符串
 function readMd(filePath: string): string {
@@ -55,16 +49,11 @@ export default router.post("/", async (req, res) => {
         const readmePath = path.join(styleDir, "README.md");
         const readmeContent = fs.readFileSync(readmePath, "utf-8");
         const firstLine = readmeContent.split("\n")[0].replace(/--/g, "");
-        const data = DATA_MAP.map(({ label, value, subDir }) => {
-          let mdPath: string;
-          if (subDir) {
-            mdPath = path.join(styleDir, subDir, `${value}.md`);
-          } else {
-            mdPath = path.join(styleDir, `${value}.md`);
-          }
+        const data = DIRECTOR_MANUAL_FIELDS.map((field) => {
+          const mdPath = getManualFieldPath(styleDir, field);
           return {
-            label,
-            value,
+            label: field.label,
+            value: field.value,
             data: readMd(mdPath),
           };
         });

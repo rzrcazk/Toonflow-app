@@ -235901,7 +235901,7 @@ var init_ai = __esm({
         const modelName = await resolveModelName(this.AiType);
         const [vendorId, vendorModelName] = modelName.split(/:(.+)/);
         const vendorConfigData = await utils_default2.db("o_vendorConfig").where("id", vendorId).first();
-        console.log(`[AI_TRACE] resolveModel AiType=${this.AiType} modelName=${modelName} vendorName=${vendorConfigData?.name || "unknown"} vendorId=${vendorId} model=${vendorModelName}`);
+        console.log(`[AI_TRACE] resolveModel AiType=${this.AiType} modelName=${modelName} vendorName=${vendorConfigData?.name || "N/A"} vendorId=${vendorId} model=${vendorModelName} dbMatched=${!!vendorConfigData}`);
         const sdkFn = await getVendorTemplateFn("textRequest", modelName);
         const baseModel = await sdkFn(this.think, this.thinkLevel);
         console.log(`[AI_TRACE] baseModel type=${typeof baseModel} keys=${JSON.stringify(Object.keys(baseModel))}`);
@@ -236246,6 +236246,58 @@ var init_utils3 = __esm({
       writeVersion: writeVersion_default,
       vendor: vendor_exports
     };
+  }
+});
+
+// src/utils/videoDuration.ts
+function normalizeDurations(durationResolutionMap) {
+  if (!Array.isArray(durationResolutionMap)) return [];
+  const durations = durationResolutionMap.flatMap((item) => Array.isArray(item?.duration) ? item.duration : []);
+  return [...new Set(durations.map(Number).filter((duration4) => Number.isFinite(duration4) && duration4 > 0))].sort((a, b) => a - b);
+}
+async function getVideoDurationPolicy(modelKey) {
+  const [vendorId, modelName] = modelKey.split(/:(.+)/);
+  if (!vendorId || !modelName) throw new Error(`\u89C6\u9891\u6A21\u578B\u683C\u5F0F\u65E0\u6548\uFF1A${modelKey}`);
+  const models = await utils_default2.vendor.getModelList(vendorId);
+  const model = models.find((item) => item.modelName === modelName);
+  if (!model) throw new Error(`\u672A\u627E\u5230\u89C6\u9891\u6A21\u578B\uFF1A${modelKey}`);
+  const supportedDurations = normalizeDurations(model.durationResolutionMap);
+  if (!supportedDurations.length) throw new Error(`\u89C6\u9891\u6A21\u578B\u672A\u914D\u7F6E\u652F\u6301\u65F6\u957F\uFF1A${modelName}`);
+  return {
+    modelKey,
+    modelName,
+    supportedDurations,
+    minDuration: supportedDurations[0],
+    maxDuration: supportedDurations[supportedDurations.length - 1]
+  };
+}
+async function getProjectVideoDurationPolicy(projectId) {
+  const project = await utils_default2.db("o_project").where("id", projectId).select("videoModel").first();
+  if (!project?.videoModel) throw new Error("\u9879\u76EE\u672A\u914D\u7F6E\u89C6\u9891\u6A21\u578B");
+  return getVideoDurationPolicy(project.videoModel);
+}
+function assertSupportedVideoDuration(duration4, policy, label = "\u89C6\u9891\u65F6\u957F") {
+  if (!Number.isFinite(duration4) || duration4 <= 0) throw new Error(`${label}\u65E0\u6548\uFF1A${duration4}`);
+  if (!policy.supportedDurations.includes(Number(duration4))) {
+    throw new Error(
+      `${label} ${duration4}s \u4E0D\u88AB\u5F53\u524D\u89C6\u9891\u6A21\u578B ${policy.modelName} \u652F\u6301\uFF1B\u652F\u6301\u7684\u65F6\u957F\uFF1A${policy.supportedDurations.join(", ")}s\u3002\u8BF7\u62C6\u5206\u5206\u955C\u6216\u9009\u62E9\u5408\u6CD5\u65F6\u957F\u3002`
+    );
+  }
+}
+function buildVideoDurationPrompt(policy) {
+  return [
+    "## \u89C6\u9891\u6A21\u578B\u65F6\u957F\u786C\u7EA6\u675F",
+    `\u5F53\u524D\u89C6\u9891\u6A21\u578B\uFF1A${policy.modelName}`,
+    `\u5355\u6761\u5206\u955C duration \u53EA\u80FD\u53D6\u4EE5\u4E0B\u503C\u4E4B\u4E00\uFF1A${policy.supportedDurations.join(", ")} \u79D2\u3002`,
+    `\u5355\u6761\u5206\u955C\u6700\u5927\u65F6\u957F\uFF1A${policy.maxDuration} \u79D2\uFF1B\u6700\u5C0F\u65F6\u957F\uFF1A${policy.minDuration} \u79D2\u3002`,
+    "\u5982\u679C\u53F0\u8BCD\u3001\u52A8\u4F5C\u6216\u60C5\u7EEA\u505C\u987F\u8D85\u8FC7\u5355\u6761\u6700\u5927\u65F6\u957F\uFF0C\u5FC5\u987B\u62C6\u6210\u591A\u4E2A\u8FDE\u7EED\u5206\u955C\uFF0C\u6BCF\u6761\u5206\u955C\u7684 duration \u90FD\u5FC5\u987B\u843D\u5728\u652F\u6301\u503C\u96C6\u5408\u5185\u3002",
+    "\u7981\u6B62\u8F93\u51FA\u4E0D\u5728\u652F\u6301\u503C\u96C6\u5408\u5185\u7684\u5206\u955C\u65F6\u957F\uFF1B\u4E0D\u8981\u4F9D\u8D56\u540E\u7EED\u89C6\u9891\u751F\u6210\u9636\u6BB5\u88C1\u526A\u65F6\u957F\u3002"
+  ].join("\n");
+}
+var init_videoDuration = __esm({
+  "src/utils/videoDuration.ts"() {
+    "use strict";
+    init_utils3();
   }
 });
 
@@ -239688,6 +239740,7 @@ var init_batchAddStoryboardInfo = __esm({
     init_zod();
     init_responseFormat();
     init_middleware();
+    init_videoDuration();
     router67 = import_express67.default.Router();
     batchAddStoryboardInfo_default = router67.post(
       "/",
@@ -239710,6 +239763,19 @@ var init_batchAddStoryboardInfo = __esm({
       async (req, res) => {
         const { data, scriptId, projectId } = req.body;
         if (!data.length) return res.status(400).send({ success: false, message: "\u6570\u636E\u4E0D\u80FD\u4E3A\u7A7A" });
+        let durationPolicy;
+        try {
+          durationPolicy = await getProjectVideoDurationPolicy(projectId);
+        } catch (e) {
+          return res.status(400).send(error50(utils_default2.error(e).message));
+        }
+        for (const [index, item] of data.entries()) {
+          try {
+            assertSupportedVideoDuration(item.duration, durationPolicy, `\u7B2C ${index + 1} \u6761\u5206\u955C\u65F6\u957F`);
+          } catch (e) {
+            return res.status(400).send(error50(utils_default2.error(e).message));
+          }
+        }
         for (const item of data) {
           const result = await utils_default2.db("o_storyboard").insert({
             prompt: item.prompt,
@@ -240483,6 +240549,7 @@ var init_batchGenerateVideo = __esm({
     init_dist_node();
     init_responseFormat();
     init_middleware();
+    init_videoDuration();
     router79 = import_express79.default.Router();
     batchGenerateVideo_default = router79.post(
       "/",
@@ -240509,6 +240576,19 @@ var init_batchGenerateVideo = __esm({
       }),
       async (req, res) => {
         const { scriptId, projectId, trackData, model, resolution, audio, mode } = req.body;
+        let durationPolicy;
+        try {
+          durationPolicy = await getVideoDurationPolicy(model);
+        } catch (e) {
+          return res.status(400).send(error50(utils_default2.error(e).message));
+        }
+        for (const [index, track] of trackData.entries()) {
+          try {
+            assertSupportedVideoDuration(track.duration, durationPolicy, `\u7B2C ${index + 1} \u6BB5\u89C6\u9891\u751F\u6210\u65F6\u957F`);
+          } catch (e) {
+            return res.status(400).send(error50(utils_default2.error(e).message));
+          }
+        }
         let modeData = [];
         if (Array.isArray(mode)) {
         } else if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
@@ -240518,6 +240598,7 @@ var init_batchGenerateVideo = __esm({
           }
         }
         const ratio = await utils_default2.db("o_project").select("videoRatio").where("id", projectId).first();
+        const ossInternalUrl = (process.env.OSS_INTERNAL_URL || "http://toonflow-app:10588").replace(/\/$/, "");
         const tasks = await Promise.all(
           trackData.map(async (track) => {
             const { uploadData, trackId, prompt, duration: duration4 } = track;
@@ -240547,10 +240628,19 @@ var init_batchGenerateVideo = __esm({
         );
         res.status(200).send(success3(tasks.map((t) => ({ videoId: t.videoId, trackId: t.trackId }))));
         for (const { videoId, videoPath, prompt, duration: duration4, images } of tasks) {
-          const base644 = await Promise.all(
+          const referenceList = await Promise.all(
             images.map(async (item) => {
               if (!item) return null;
-              return { base64: await utils_default2.oss.getImageBase64(item.path), type: item.sources == "audio" ? "audio" : "image" };
+              if (!item.path) return null;
+              const type = item.sources == "audio" ? "audio" : "image";
+              const base644 = await utils_default2.oss.getImageBase64(item.path);
+              if (type !== "image") return { base64: base644, type };
+              return {
+                base64: base644,
+                type,
+                sourceType: "url",
+                url: `${ossInternalUrl}/oss/${item.path.replace(/^\//, "")}`
+              };
             })
           );
           const relatedObjects = { projectId, videoId, scriptId, type: "\u89C6\u9891" };
@@ -240558,7 +240648,7 @@ var init_batchGenerateVideo = __esm({
           aiVideo.run(
             {
               prompt,
-              referenceList: base644.filter(Boolean),
+              referenceList: referenceList.filter(Boolean),
               mode: modeData.length > 0 ? modeData : mode,
               duration: duration4,
               aspectRatio: ratio?.videoRatio || "16:9",
@@ -240686,6 +240776,7 @@ var init_generateVideo = __esm({
     init_dist_node();
     init_responseFormat();
     init_middleware();
+    init_videoDuration();
     router83 = import_express83.default.Router();
     generateVideo_default = router83.post(
       "/",
@@ -240708,6 +240799,11 @@ var init_generateVideo = __esm({
       }),
       async (req, res) => {
         const { scriptId, projectId, prompt, uploadData, model, duration: duration4, resolution, audio, mode, trackId } = req.body;
+        try {
+          assertSupportedVideoDuration(duration4, await getVideoDurationPolicy(model), "\u89C6\u9891\u751F\u6210\u65F6\u957F");
+        } catch (e) {
+          return res.status(400).send(error50(utils_default2.error(e).message));
+        }
         let modeData = [];
         if (typeof mode === "string" && mode.startsWith('["') && mode.endsWith('"]')) {
           try {
@@ -240718,7 +240814,7 @@ var init_generateVideo = __esm({
         }
         const ratio = await utils_default2.db("o_project").select("videoRatio").where("id", projectId).first();
         const videoPath = `/${projectId}/video/${v4_default()}.mp4`;
-        const ossInternalUrl = process.env.OSS_INTERNAL_URL || `http://localhost:10588`;
+        const ossInternalUrl = (process.env.OSS_INTERNAL_URL || "http://toonflow-app:10588").replace(/\/$/, "");
         const imagePaths = [];
         await Promise.all(
           uploadData.map(async (item) => {
@@ -240821,7 +240917,7 @@ var init_generateVideoPrompt = __esm({
         // 用户选择的文本 LLM 模型（用于生成视频提示词）
         model: external_exports.string(),
         // 用户选择的视频模型（提示词将用于该视频模型）
-        videoModel: external_exports.string()
+        videoModel: external_exports.string().optional().nullable()
       }),
       async (req, res) => {
         const { trackId, projectId, info, model, videoModel } = req.body;
@@ -240869,7 +240965,10 @@ var init_generateVideoPrompt = __esm({
               shouldGenerateImage: item.shouldGenerateImage
             });
         }
-        const [videoVendorId, videoModelName] = videoModel.split(/:(.+)/);
+        const projectData = await utils_default2.db("o_project").select("*").where({ id: projectId }).first();
+        const targetVideoModel = videoModel || projectData?.videoModel || model;
+        if (!targetVideoModel) return res.status(400).send(error50("\u9879\u76EE\u672A\u914D\u7F6E\u89C6\u9891\u6A21\u578B"));
+        const [videoVendorId, videoModelName] = targetVideoModel.split(/:(.+)/);
         let videoModelMode = [];
         let videoModelVendorName = "";
         try {
@@ -240882,7 +240981,6 @@ var init_generateVideoPrompt = __esm({
         } catch (e) {
           console.error("[generateVideoPrompt] \u83B7\u53D6\u89C6\u9891\u6A21\u578B\u914D\u7F6E\u5931\u8D25:", e);
         }
-        const projectData = await utils_default2.db("o_project").select("*").where({ id: projectId }).first();
         const videoPrompt = await utils_default2.db("o_prompt").where("type", "videoPromptGeneration").first();
         let videoPromptGeneration = "";
         if (videoPrompt && videoPrompt.useData) {
@@ -240901,7 +240999,7 @@ var init_generateVideoPrompt = __esm({
         };
         const modeDescription = Array.isArray(videoModelMode) ? videoModelMode.length > 0 ? videoModelMode.map((m) => modeLabelMap[m] || m).join(", ") : "\u672A\u6307\u5B9A\u6A21\u5F0F" : String(videoModelMode || "\u672A\u6307\u5B9A\u6A21\u5F0F");
         const content = `
-          **\u76EE\u6807\u89C6\u9891\u6A21\u578B**\uFF1A${videoModelName || videoModel},
+          **\u76EE\u6807\u89C6\u9891\u6A21\u578B**\uFF1A${videoModelName || targetVideoModel},
           **\u89C6\u9891\u4F9B\u5E94\u5546**\uFF1A${videoModelVendorName || "\u672A\u77E5"},
           **\u89C6\u9891\u6A21\u578B\u6A21\u5F0F**\uFF1A${modeDescription},
           **\u8D44\u4EA7\u4FE1\u606F**\uFF08\u89D2\u8272\u3001\u573A\u666F\u3001\u9053\u5177):${assets.filter((i) => i.filePath).map((i) => `[${i.id},${i.type},${i.name}]`).join(",")},
@@ -240913,7 +241011,16 @@ var init_generateVideoPrompt = __esm({
         )},
           `;
         try {
-          const { text: text2 } = await utils_default2.Ai.Text(model).invoke({
+          let promptTextModel = model;
+          try {
+            const [modelVendorId, modelName] = model.split(/:(.+)/);
+            const modelConfig = await utils_default2.vendor.getModelList(modelVendorId);
+            const foundModel = modelConfig.find((m) => m.modelName === modelName);
+            if (foundModel?.type !== "text") promptTextModel = "universalAi";
+          } catch {
+            promptTextModel = "universalAi";
+          }
+          const { text: text2 } = await utils_default2.Ai.Text(promptTextModel).invoke({
             system: videoPromptGeneration,
             messages: [
               {
@@ -252896,7 +253003,17 @@ var init_getScrptApi = __esm({
         if (name28) {
           query = query.andWhere("name", "like", `%${name28}%`);
         }
-        const data = await query;
+        const allScripts = await query;
+        const nameToLatest = /* @__PURE__ */ new Map();
+        for (const row of allScripts) {
+          const n = row.name;
+          if (!n) continue;
+          const existing = nameToLatest.get(n);
+          if (!existing || row.id > existing.id) {
+            nameToLatest.set(n, row);
+          }
+        }
+        const data = Array.from(nameToLatest.values());
         const assetsData = await utils_default2.db("o_assets").leftJoin("o_scriptAssets", "o_assets.id", "o_scriptAssets.assetsId").whereIn(
           "o_scriptAssets.scriptId",
           data.map((i) => i.id)
@@ -256237,6 +256354,7 @@ var tools_default = (toolCpnfig) => {
 };
 
 // src/agents/productionAgent/index.ts
+init_videoDuration();
 var fs11 = __toESM(require("fs"));
 var import_path10 = __toESM(require("path"));
 function buildMemPrompt(mem) {
@@ -256279,10 +256397,13 @@ async function runDecisionAI(ctx) {
     }
   })();
   console.log("%c Line:67 \u{1F36A} isRef", "background:#fca650", isRef);
+  const videoDurationInfo = buildVideoDurationPrompt(await getVideoDurationPolicy(projectInfo.videoModel));
   const modelInfo = `\u9879\u76EE\u4F7F\u7528\u7684\u6A21\u578B\u5982\u4E0B\uFF1A
 \u56FE\u50CF\u6A21\u578B\uFF1A${imageModelName}
 \u89C6\u9891\u6A21\u578B\uFF1A${videoModelName}
-\u591A\u53C2\uFF1A${isRef ? "\u662F" : "\u5426"}`;
+\u591A\u53C2\uFF1A${isRef ? "\u662F" : "\u5426"}
+
+${videoDurationInfo}`;
   const mem = buildMemPrompt(await memory.get(text2));
   const { fullStream } = await utils_default2.Ai.Text("productionAgent:decisionAgent", ctx.thinkConfig.think, ctx.thinkConfig.thinlLevel).stream({
     messages: [
@@ -256356,10 +256477,13 @@ async function createSubAgent(parentCtx) {
     }
   })();
   console.log("%c Line:153 \u{1F964} isRef", "background:#42b983", isRef);
+  const videoDurationInfo = buildVideoDurationPrompt(await getVideoDurationPolicy(projectInfo.videoModel));
   const modelInfo = `\u9879\u76EE\u4F7F\u7528\u7684\u6A21\u578B\u5982\u4E0B\uFF1A
 \u56FE\u50CF\u6A21\u578B\uFF1A${imageModelName}
 \u89C6\u9891\u6A21\u578B\uFF1A${videoModelName}
-\u591A\u53C2\uFF1A${isRef ? "\u662F" : "\u5426"}`;
+\u591A\u53C2\uFF1A${isRef ? "\u662F" : "\u5426"}
+
+${videoDurationInfo}`;
   const run_sub_agent_derive_assets = tool({
     description: "\u8FD0\u884C\u6267\u884CsubAgent\u6765\u5B8C\u6210\u884D\u751F\u8D44\u4EA7\u5206\u6790\u4E0E\u4FE1\u606F\u5199\u5165\u76F8\u5173\u4EFB\u52A1",
     inputSchema: jsonSchema(promptInput),

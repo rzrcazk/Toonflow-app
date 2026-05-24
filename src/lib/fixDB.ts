@@ -379,8 +379,17 @@ export default async (knex: Knex): Promise<void> => {
     }
   }
   await addColumn("o_assets", "audioBindState", "integer");
+  await addColumn("o_modelPrompt", "vendorId", "string");
+  await addColumn("o_modelPrompt", "model", "string");
   await addColumn("o_modelPrompt", "fileName", "string");
   await addColumn("o_modelPrompt", "path", "string");
+  if ((knex.client as any).config?.client === "pg") {
+    for (const column of ["modelId", "type"]) {
+      if (await knex.schema.hasColumn("o_modelPrompt", column)) {
+        await knex.raw(`ALTER TABLE "o_modelPrompt" ALTER COLUMN "${column}" DROP NOT NULL`);
+      }
+    }
+  }
   const vendorDataSelect = await db("o_vendorConfig").whereIn("id", ["deepseek", "atlascloud"]).select("*");
   if (!vendorDataSelect.find((i) => i.id == "deepseek")) {
     await db("o_vendorConfig").insert({
@@ -420,6 +429,13 @@ export default async (knex: Knex): Promise<void> => {
       value: notValModelData.length ? "0" : "1",
     });
   }
+  const ensureSetting = async (key: string, value: string) => {
+    const exists = await db("o_setting").where("key", key).first();
+    if (!exists) await db("o_setting").insert({ key, value });
+  };
+  await ensureSetting("embeddingProvider", "local");
+  await ensureSetting("embeddingModel", "all-MiniLM-L6-v2");
+  await ensureSetting("embeddingDimensions", "");
   //添加数据高级配置
   const advancedAgentList = [
     { key: "scriptAgent:decisionAgent", name: "剧本Agent:决策层", desc: "决策层" },

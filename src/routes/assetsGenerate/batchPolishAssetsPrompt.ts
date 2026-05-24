@@ -4,6 +4,7 @@ import pLimit from "p-limit";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { buildRoleDifferenceContext } from "@/utils/rolePromptDifferentiation";
 const router = express.Router();
 interface OutlineItem {
   description: string;
@@ -53,9 +54,10 @@ export default router.post(
     // 预加载公共数据
     const assetsIds = items.map((item: { assetsId: number }) => item.assetsId);
     //查询所有资产，用于判断每个资产是否是衍生资产
-    const assetsDataList = await u.db("o_assets").whereIn("id", assetsIds).select("id", "assetsId");
+    const assetsDataList = await u.db("o_assets").whereIn("id", assetsIds).select("id", "assetsId", "describe", "prompt");
     if (!assetsDataList || assetsDataList.length === 0) return res.status(500).send(error("资产不存在"));
     const assetsDataMap = new Map(assetsDataList.map((a: any) => [a.id, a]));
+    const projectRoles = await u.db("o_assets").where({ projectId, type: "role" }).whereNull("assetsId").select("id", "name", "describe", "prompt");
     // 所有前置检测通过后，再批量更新状态为生成中
     await u.db("o_assets").whereIn("id", assetsIds).update({ promptState: "生成中" });
 
@@ -89,7 +91,7 @@ export default router.post(
     const limit = pLimit(concurrentCount ?? 1);
     const tasks = items.map((item: { assetsId: number; type: string; name: string; describe: string }) =>
       limit(async () => {
-        const assetData = assetsDataMap.get(item.assetsId);
+        const assetData = assetsDataMap.get(item.assetsId) as { id: number; assetsId?: number | null; describe?: string | null; prompt?: string | null } | undefined;
         if (!assetData) return;
         const typeConfig = getTypeConfig(!!assetData.assetsId);
         const config = typeConfig[item.type];
@@ -102,6 +104,15 @@ export default router.post(
         }
         const systemPrompt = visualManual;
         try {
+          const effectiveDescribe = assetData.describe || item.describe;
+          const roleDifferenceContext =
+            item.type === "role"
+              ? buildRoleDifferenceContext(
+                  project,
+                  { id: item.assetsId, name: item.name, describe: effectiveDescribe, prompt: assetData.prompt },
+                  projectRoles,
+                )
+              : "";
           const { _output } = (await u.Ai.Text("universalAi").invoke({
             system: systemPrompt + "\n" + otherTextPrompt,
             messages: [
@@ -111,7 +122,7 @@ export default router.post(
                     **基础参数：**
       **${config.nameLabel}设定：**
       - ${config.nameLabel}名称:${item.name},
-      - ${config.nameLabel}描述:${item.describe},`,
+      - ${config.nameLabel}描述:${effectiveDescribe},${roleDifferenceContext}`,
               },
             ],
           })) as any;

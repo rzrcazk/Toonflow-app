@@ -301,6 +301,18 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             value: 5,
           },
           {
+            key: "embeddingProvider",
+            value: "local",
+          },
+          {
+            key: "embeddingModel",
+            value: "all-MiniLM-L6-v2",
+          },
+          {
+            key: "embeddingDimensions",
+            value: "",
+          },
+          {
             key: "modelOnnxFile",
             value: '["all-MiniLM-L6-v2", "onnx", "model_fp16.onnx"]',
           },

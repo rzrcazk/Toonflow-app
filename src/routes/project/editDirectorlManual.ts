@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { validateFields } from "@/middleware/middleware";
 import { z } from "zod";
+import { DIRECTOR_MANUAL_FIELDS, getManualFieldPath, normalizeReadmeForSave, validateManualDirName } from "@/utils/manuals";
 const router = express.Router();
 
 // 编辑导演手册
@@ -31,9 +32,10 @@ export default router.post(
         data: { label: string; value: string; data: string }[];
       };
 
-      // 安全校验：不允许包含路径分隔符、纯数字，防止越级删除或误删项目目录
-      if (name.includes("/") || name.includes("\\") || name === "." || name === ".." || /^\d+$/.test(name)) {
-        res.status(400).send(error("名称不能包含路径分隔符或为纯数字"));
+      const nameError = validateManualDirName(name);
+      const pathError = validateManualDirName(directorManual);
+      if (nameError || pathError) {
+        res.status(400).send(error(nameError ?? pathError!));
         return;
       }
 
@@ -41,31 +43,24 @@ export default router.post(
       if (!fs.existsSync(mainPath)) {
         return res.status(400).send(error("导演手册不存在"));
       }
-      // 字段映射表（与 getVisualManual 保持一致）
-      const DATA_MAP: { value: string; subDir?: string }[] = [
-        { value: "README" },
-        { value: "director_planning_narrative", subDir: "driector_skills" },
-        { value: "director_storyboard_table_narrative", subDir: "driector_skills" },
-      ];
       // 根据 DATA_MAP 构建 value -> subDir 的映射
-      const SUB_DIR_MAP = new Map(DATA_MAP.map(({ value, subDir }) => [value, subDir ?? ""]));
+      const FIELD_MAP = new Map(DIRECTOR_MANUAL_FIELDS.map((field) => [field.value, field]));
 
       // 合法的 value 值集合，用于校验
-      const VALID_KEYS = new Set(DATA_MAP.map(({ value }) => value));
+      const VALID_KEYS = new Set(DIRECTOR_MANUAL_FIELDS.map(({ value }) => value));
 
       for (const item of data) {
         if (!VALID_KEYS.has(item.value)) continue;
 
-        const subDir = SUB_DIR_MAP.get(item.value)!;
-        const dirArr = subDir ? [mainPath, subDir] : [mainPath];
-        const filePath = u.getPath([...dirArr, `${item.value}.md`]);
+        const field = FIELD_MAP.get(item.value)!;
+        const filePath = getManualFieldPath(mainPath, field);
 
         const fileDir = path.dirname(filePath);
         // 目录不存在时递归创建
         if (!fs.existsSync(fileDir)) {
           fs.mkdirSync(fileDir, { recursive: true });
         }
-        const content = item.value === "README" ? `${name}\n${item.data}` : item.data;
+        const content = item.value === "README" ? normalizeReadmeForSave(name, item.data) : item.data;
         fs.writeFileSync(filePath, content, "utf-8");
       }
       const imagesDir = path.join(mainPath, "images");

@@ -13,6 +13,7 @@ const router = express.Router();
 const NewAssetSchema = z.object({
   name: z.string().describe("资产名称,仅为名称不做其他任何表述"),
   desc: z.string().describe("资产描述"),
+  prompt: z.string().describe("根据剧本原文提取的初版视觉提示词，必须保留角色/场景/道具的可辨识视觉锚点"),
   type: z.enum(["role", "tool", "scene"]).describe("资产类型"),
   scriptIds: z.array(z.number()).describe("使用该资产的剧本id数组"),
 });
@@ -32,6 +33,7 @@ export const AssetSchema = z.object({
 type NewAsset = z.infer<typeof NewAssetSchema>;
 type ExistingAssetRef = z.infer<typeof ExistingAssetRefSchema>;
 type Asset = z.infer<typeof AssetSchema>;
+type AssetIdNameRow = { id: number; name: string; type?: string | null };
 
 /** 每批 AI 调用的结果 */
 type GroupResult = {
@@ -87,7 +89,7 @@ export default router.post(
       if (!newAssets.length && !existingRefs.length) return;
 
       // 查询已有资产
-      const existingAssets = await u.db("o_assets").where("projectId", projectId).select("id", "name");
+      const existingAssets = (await u.db("o_assets").where("projectId", projectId).select("id", "name")) as AssetIdNameRow[];
       const existingMap = new Map(existingAssets.map((a) => [a.name!, a.id!]));
 
       // 插入新资产（不在已有列表中的）
@@ -98,13 +100,14 @@ export default router.post(
             name: asset.name,
             type: asset.type,
             describe: asset.desc,
+            prompt: asset.prompt ?? "",
             projectId: projectId,
           })),
         );
       }
 
       // 重新查询获取完整的 name -> id 映射
-      const allAssets = await u.db("o_assets").where("projectId", projectId).select("id", "name");
+      const allAssets = (await u.db("o_assets").where("projectId", projectId).select("id", "name")) as AssetIdNameRow[];
       const nameToId = new Map(allAssets.map((a) => [a.name, a.id]));
 
       // 收集所有资产与剧本的关联关系
@@ -175,7 +178,7 @@ export default router.post(
           extractState: 0, // 正在提取
         });
         // 查询当前项目已有的资产列表，提供给 AI 参考
-        const existingAssets = await u.db("o_assets").where("projectId", projectId).select("name", "type");
+        const existingAssets = (await u.db("o_assets").where("projectId", projectId).select("name", "type")) as AssetIdNameRow[];
         const existingAssetsList = existingAssets.map((a) => `${a.name}(${a.type})`).join("、");
 
         // 拼接多集剧本内容，每集用分隔标记
@@ -223,6 +226,8 @@ export default router.post(
                 content:
                   scriptAssetExtraction +
                   "\n\n提取剧本中涉及的资产（角色、场景、道具），参考技能 script_assets_extract 规范，结果必须通过 resultTool 工具返回。" +
+                  "\n\n角色资产必须输出 prompt 字段。prompt 要从小说原文推导角色的独特视觉锚点，包含年龄段、脸型/骨相、眼神、发型、身高体型、服饰材质颜色、身份气质、伤病/疲惫/压迫感等差异；不要把多个男性都写成国字脸、剑眉星目、墨黑长发、素色长衫，除非原文明确如此。" +
+                  "\n\n如果原文未明确某项外貌，不要套用固定审美模板；应依据角色身份、剧情处境、性格功能给出互相区分的合理视觉设定，并在 desc/prompt 中体现差异。" +
                   "\n\n注意：本次会同时提供多集剧本，每集剧本以 ===== 【剧本ID: xxx】 ===== 分隔。你需要分析每集剧本使用了哪些资产，并在输出中用 scriptIds 数组标明每个资产在哪些剧本中出现。",
               },
               {

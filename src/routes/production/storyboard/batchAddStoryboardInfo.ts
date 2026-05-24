@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { assertSupportedVideoDuration, getProjectVideoDurationPolicy } from "@/utils/videoDuration";
 const router = express.Router();
 export default router.post(
   "/",
@@ -25,6 +26,19 @@ export default router.post(
   async (req, res) => {
     const { data, scriptId, projectId } = req.body;
     if (!data.length) return res.status(400).send({ success: false, message: "数据不能为空" });
+    let durationPolicy;
+    try {
+      durationPolicy = await getProjectVideoDurationPolicy(projectId);
+    } catch (e) {
+      return res.status(400).send(error(u.error(e).message));
+    }
+    for (const [index, item] of data.entries()) {
+      try {
+        assertSupportedVideoDuration(item.duration, durationPolicy, `第 ${index + 1} 条分镜时长`);
+      } catch (e) {
+        return res.status(400).send(error(u.error(e).message));
+      }
+    }
     for (const item of data) {
       const result = await u.db("o_storyboard").insert({
         prompt: item.prompt,

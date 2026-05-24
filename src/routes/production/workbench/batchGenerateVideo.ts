@@ -2,9 +2,10 @@ import express from "express";
 import u from "@/utils";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { success } from "@/lib/responseFormat";
+import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { ReferenceList } from "@/utils/ai";
+import { assertSupportedVideoDuration, getVideoDurationPolicy } from "@/utils/videoDuration";
 const router = express.Router();
 
 type Type = "imageReference" | "startImage" | "endImage" | "videoReference" | "audioReference";
@@ -43,6 +44,19 @@ export default router.post(
   }),
   async (req, res) => {
     const { scriptId, projectId, trackData, model, resolution, audio, mode } = req.body;
+    let durationPolicy;
+    try {
+      durationPolicy = await getVideoDurationPolicy(model);
+    } catch (e) {
+      return res.status(400).send(error(u.error(e).message));
+    }
+    for (const [index, track] of trackData.entries()) {
+      try {
+        assertSupportedVideoDuration(track.duration, durationPolicy, `第 ${index + 1} 段视频生成时长`);
+      } catch (e) {
+        return res.status(400).send(error(u.error(e).message));
+      }
+    }
 
     let modeData = [];
     if (Array.isArray(mode)) {

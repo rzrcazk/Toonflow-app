@@ -6,6 +6,7 @@ import { validateFields } from "@/middleware/middleware";
 import getPath from "@/utils/getPath";
 import fs from "fs";
 import path from "path";
+import { validateManualDirName } from "@/utils/manuals";
 const router = express.Router();
 
 // 视觉手册
@@ -13,10 +14,16 @@ export default router.post(
   "/",
   validateFields({
     type: z.string(),
+    stylePath: z.string().optional(),
   }),
   async (req, res) => {
-    const { type } = req.body;
-    const basePath = getPath(["skills", "art_skills", "chinese_sweet_romance"]);
+    const { type, stylePath = "chinese_sweet_romance" } = req.body;
+    const pathError = validateManualDirName(stylePath);
+    if (pathError) {
+      res.status(400).json({ error: pathError });
+      return;
+    }
+    const basePath = getPath(["skills", "art_skills", stylePath]);
     // 递归查找 basePath 下名为 `${type}.md` 的文件
     const findFile = (dir: string, target: string): string | null => {
       const entries = fs.readdirSync(dir, { withFileTypes: true });

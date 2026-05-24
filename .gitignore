@@ -1,4 +1,12 @@
 .devtools
+
+# Local agent/tool state
+.claw/
+.claude/
+.agents/
+.sandbox-home/
+.sandbox-tmp/
+
 # dependencies (bun install)
 node_modules
 .vscode
@@ -42,6 +50,10 @@ uploads/*
 db.sqlite
 db.sqlite-shm
 db.sqlite-wal
+*.sqlite-shm
+*.sqlite-wal
+data/*.db
+data/*.sqlite
 
 web/*
 
@@ -55,3 +67,6 @@ database.d.ts
 data/oss/*
 data/test.sqlite
 version.txt
+
+# Local analysis reports
+branch-diff-dashboard.html

@@ -3,6 +3,8 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
+import { resolveDefaultVideoMode, resolveDefaultVideoModel } from "@/utils/defaultVideoModel";
 const router = express.Router();
 
 // 新增项目
@@ -32,11 +34,11 @@ export default router.post(
       artStyle,
       videoRatio,
       directorManual,
-      imageModel,
-      videoModel,
+      imageModel: resolveDefaultImageModel(imageModel),
+      videoModel: resolveDefaultVideoModel(videoModel),
       imageQuality,
       projectType,
-      mode,
+      mode: resolveDefaultVideoMode(mode),
     });
 
     res.status(200).send(success({ message: "编辑项目成功" }));

@@ -1,6 +1,6 @@
 /**
  * Toonflow AI供应商模板
- * @version 2.0
+ * @version 2.2
  */
 // ============================================================
 // 类型定义
@@ -51,9 +51,16 @@ interface VendorConfig {
   inputValues: Record<string, string>;
   models: (TextModel | ImageModel | VideoModel | TTSModel)[];
 }
+type ReferenceList =
+  | { type: "image"; sourceType?: "base64"; base64: string; url?: string }
+  | { type: "audio"; sourceType?: "base64"; base64: string; url?: string }
+  | { type: "video"; sourceType?: "base64"; base64: string; url?: string }
+  | { type: "image"; sourceType: "url"; url: string }
+  | { type: "audio"; sourceType: "url"; url: string }
+  | { type: "video"; sourceType: "url"; url: string };
 interface ImageConfig {
   prompt: string;
-  imageBase64: string[];
+  referenceList?: Extract<ReferenceList, { type: "image" }>[];
   size: "1K" | "2K" | "4K";
   aspectRatio: `${number}:${number}`;
 }
@@ -62,7 +69,7 @@ interface VideoConfig {
   resolution: string;
   aspectRatio: "16:9" | "9:16";
   prompt: string;
-  imageBase64?: string[];
+  referenceList?: ReferenceList[];
   audio?: boolean;
   mode: VideoMode[];
 }
@@ -112,7 +119,7 @@ declare const exports: {
 // ============================================================
 const vendor: VendorConfig = {
   id: "openai",
-  version: "2.0",
+  version: "2.2",
   author: "Toonflow",
   name: "OpenAI标准接口",
   description: "OpenAI标准格式接口，可修改请求地址并手动添加模型。",
@@ -126,12 +133,49 @@ const vendor: VendorConfig = {
     baseUrl: "https://api.openai.com/v1",
   },
   models: [
-    { name: "GPT-4o", modelName: "gpt-4o", type: "text", think: false },
-    { name: "GPT-4.1", modelName: "gpt-4.1", type: "text", think: false },
-    { name: "GPT-5.1", modelName: "gpt-5.1", type: "text", think: false },
-    { name: "GPT-5.2", modelName: "gpt-5.2", type: "text", think: false },
-    { name: "GPT-5.4", modelName: "gpt-5.4", type: "text", think: false },
+    { name: "GPT-5.5", modelName: "gpt-5.5", type: "text", think: true },
+    { name: "GPT-image-2", modelName: "gpt-image-2", type: "image", mode: ["text", "singleImage", "multiReference"] },
   ],
+};
+// ============================================================
+// 辅助工具
+// ============================================================
+const getBaseUrl = () => vendor.inputValues.baseUrl.replace(/\/+$/, "");
+const getHeaders = () => {
+  if (!vendor.inputValues.apiKey) throw new Error("缺少API Key");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${vendor.inputValues.apiKey.replace(/^Bearer\s+/i, "")}`,
+  };
+};
+const resolveOpenAIImageSize = (config: ImageConfig): string => {
+  if (config.aspectRatio === "1:1") return "1024x1024";
+  const [w, h] = String(config.aspectRatio || "").split(":").map(Number);
+  if (Number.isFinite(w) && Number.isFinite(h)) {
+    if (w > h) return "1536x1024";
+    if (h > w) return "1024x1536";
+  }
+  return "auto";
+};
+const normalizeImageUrl = (image: Extract<ReferenceList, { type: "image" }>): string => {
+  const value = image.sourceType === "url" ? image.url : image.base64 || image.url || "";
+  if (/^(data:image\/|https?:\/\/)/i.test(value)) return value;
+  return `data:image/png;base64,${value}`;
+};
+const extractImageResult = async (data: any): Promise<string> => {
+  if (data?.error) {
+    throw new Error(`图片生成失败：${data.error.message || data.error.code || JSON.stringify(data.error)}`);
+  }
+  const list = Array.isArray(data?.data) ? data.data : [];
+  for (const item of list) {
+    if (item?.b64_json) return item.b64_json;
+    if (item?.url) return await urlToBase64(item.url);
+    if (item?.error) throw new Error(`图片生成失败：${item.error.message || item.error.code || JSON.stringify(item.error)}`);
+  }
+  throw new Error("图片生成失败：未返回有效结果");
+};
+const extractErrorMessage = (data: any): string => {
+  return data?.error?.message || data?.message || data?.error?.code || JSON.stringify(data || {});
 };
 // ============================================================
 // 适配器函数
@@ -142,7 +186,27 @@ const textRequest = (model: TextModel, think: boolean, thinkLevel: 0 | 1 | 2 | 3
   return createOpenAI({ baseURL: vendor.inputValues.baseUrl, apiKey }).chat(model.modelName);
 };
 const imageRequest = async (config: ImageConfig, model: ImageModel): Promise<string> => {
-  return "";
+  const headers = getHeaders();
+  const baseUrl = getBaseUrl();
+  const imageRefs = (config.referenceList || []).filter((ref) => ref.type === "image");
+  const body: any = {
+    model: model.modelName,
+    prompt: config.prompt || "",
+    size: resolveOpenAIImageSize(config),
+    response_format: "b64_json",
+  };
+
+  const endpoint = imageRefs.length > 0 ? "/images/edits" : "/images/generations";
+  if (imageRefs.length > 0) {
+    body.images = imageRefs.map((ref) => ({ image_url: normalizeImageUrl(ref) }));
+  }
+
+  logger(`[OpenAI 图片] 请求模型: ${model.modelName}, endpoint=${endpoint}, refs=${imageRefs.length}`);
+  const response = await axios.post(`${baseUrl}${endpoint}`, body, { headers, validateStatus: () => true });
+  if (response.status && (response.status < 200 || response.status >= 300)) {
+    throw new Error(`图片生成请求失败，状态码: ${response.status}，错误信息: ${extractErrorMessage(response.data)}`);
+  }
+  return await extractImageResult(response.data);
 };
 const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<string> => {
   return "";
@@ -151,7 +215,7 @@ const ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> =
   return "";
 };
 const checkForUpdates = async (): Promise<{ hasUpdate: boolean; latestVersion: string; notice: string }> => {
-  return { hasUpdate: false, latestVersion: "2.0", notice: "" };
+  return { hasUpdate: false, latestVersion: "2.2", notice: "" };
 };
 const updateVendor = async (): Promise<string> => {
   return "";

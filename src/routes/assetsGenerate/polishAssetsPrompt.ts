@@ -3,6 +3,8 @@ import u from "@/utils";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { sanitizeImagePrompt } from "@/utils/promptHygiene";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
 const router = express.Router();
 
 
@@ -21,7 +23,7 @@ export default router.post(
   async (req, res) => {
     const { assetsId, projectId, type, name, describe } = req.body;
     //获取风格
-    const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro", "imageModel").first();
     //如果没有找到对应的项目，返回错误
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
@@ -76,9 +78,10 @@ export default router.post(
       })) as any;
 
       if (!_output) return res.status(500).send("失败");
-      await u.db("o_assets").where("id", assetsId).update({ prompt: _output, promptState: "已完成" });
+      const prompt = sanitizeImagePrompt(_output, { model: resolveDefaultImageModel(project.imageModel), assetType: type });
+      await u.db("o_assets").where("id", assetsId).update({ prompt, promptState: "已完成" });
 
-      res.status(200).send(success({ prompt: _output, assetsId }));
+      res.status(200).send(success({ prompt, assetsId }));
     } catch (e: any) {
       await u
         .db("o_assets")

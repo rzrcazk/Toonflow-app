@@ -3,7 +3,7 @@ import { success, error } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import u from "@/utils";
 import { z } from "zod";
-import { tool, jsonSchema } from "ai";
+import { persistModelTestReferences } from "@/utils/modelTestReference";
 const router = express.Router();
 
 // 检查语言模型
@@ -44,6 +44,7 @@ export default router.post(
       const modelList = await u.vendor.getModelList(vendorConfigData.id!);
 
       const selectedModel = modelList.find((i: any) => i.modelName == modelName);
+      if (!selectedModel) return res.status(500).send(error("未找到该模型"));
 
       let modeData = [];
       if (Array.isArray(mode)) {
@@ -52,12 +53,17 @@ export default router.post(
           modeData = JSON.parse(mode);
         } catch (e) {}
       }
+      const referenceList = [
+        ...(await persistModelTestReferences(images, "image", u.oss)),
+        ...(await persistModelTestReferences(videos, "video", u.oss)),
+        ...(await persistModelTestReferences(audios, "audio", u.oss)),
+      ];
       const reqFn = await u.Ai.Video(`${id}:${modelName}`).run({
         duration: selectedModel.durationResolutionMap[0].duration[0],
         resolution: selectedModel.durationResolutionMap[0].resolution[0],
         aspectRatio: "16:9",
         prompt: prompt,
-        referenceList: [...images, ...videos, ...audios],
+        referenceList,
         audio: typeof selectedModel.audio == "boolean" ? selectedModel.audio : true,
         mode: modeData.length > 0 ? modeData : mode,
       });

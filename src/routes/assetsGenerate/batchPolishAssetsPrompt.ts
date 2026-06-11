@@ -4,6 +4,8 @@ import pLimit from "p-limit";
 import * as zod from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { sanitizeImagePrompt } from "@/utils/promptHygiene";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
 const router = express.Router();
 interface OutlineItem {
   description: string;
@@ -46,7 +48,7 @@ export default router.post(
   async (req, res) => {
     const { projectId, items, concurrentCount, otherTextPrompt } = req.body;
     //获取风格
-    const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
+    const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro", "imageModel").first();
     //如果没有找到对应的项目，返回错误
     if (!project) return res.status(500).send(success({ message: "项目为空" }));
 
@@ -121,7 +123,8 @@ export default router.post(
             return;
           }
 
-          await u.db("o_assets").where("id", item.assetsId).update({ prompt: _output, promptState: "已完成" });
+          const prompt = sanitizeImagePrompt(_output, { model: resolveDefaultImageModel(project.imageModel), assetType: item.type });
+          await u.db("o_assets").where("id", item.assetsId).update({ prompt, promptState: "已完成" });
         } catch (e: any) {
           await u
             .db("o_assets")

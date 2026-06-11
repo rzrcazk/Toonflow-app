@@ -17,6 +17,12 @@ import { isEletron } from "@/utils/getPath";
 
 const app = express();
 const server = http.createServer(app);
+const ignoredAccessLogPaths = new Set(["/api/setting/about/checkUpdate"]);
+
+function shouldSkipAccessLog(req: Request): boolean {
+  const url = req.originalUrl || req.url;
+  return ignoredAccessLogPaths.has(url.split("?")[0]);
+}
 
 async function checkPermissions() {
   if (!isEletron()) return true;
@@ -53,7 +59,7 @@ export default async function startServe(randomPort: Boolean = false) {
 
   expressWs(app);
 
-  app.use(logger("dev"));
+  app.use(logger("dev", { skip: (req) => shouldSkipAccessLog(req as Request) }));
   app.use(cors({ origin: "*" }));
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));

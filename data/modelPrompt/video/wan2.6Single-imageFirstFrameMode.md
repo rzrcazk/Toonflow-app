@@ -53,6 +53,10 @@
 - **视觉风格**：风格相关描述参考 Assistant 中的「视觉风格约束」部分内容，不在本 Skill 内自行定义风格
 - **仅输出视频提示词**：不附加任何解释、注释、分析过程、推理步骤、分隔线（`---`）或额外说明
 - **严格遵循 videoDesc**：提示词内容严格基于 videoDesc 中的画面描述、时长、景别、运镜、角色动作、情绪、光影氛围、台词、音效字段生成，不编造额外内容
+- **过审友好改写**：危险或强刺激剧情必须视觉降级为虚弱、惊醒、不适、梦魇、灵力紊乱、衣襟凌乱、尘痕、暗色旧污痕；不写具体受伤部位、血液颜色/流动、伤口牵动或剧烈生理反应
+- **单镜头单动作**：每个 4-5 秒视频只表现一个主动作，如醒来、回头、起身、看向某物、伸手；动作自然偏慢，反应略夸张，有轻喜剧反差
+- **明亮轻喜剧**：提示词必须包含明亮暖色、画面清晰、旧屋但不阴森、轻喜剧反差；角色狼狈但不惨
+- **长度与安全收尾**：单条视频提示词建议 180-300 字，末尾加入“画面健康明亮，无血腥、无惊悚、无危险行为、无新增角色、无文字水印。”
 - **台词不可缺失**：videoDesc 中有台词的分镜，必须在提示词中完整体现台词内容，不得遗漏
 - **台词保持原始输入**：台词内容严禁翻译，必须保持 videoDesc 中的原始语言原样输出
 - **台词类型标注**：必须区分普通对白（dialogue / 说）、内心独白（OS / 内心OS）、画外音（VO / 画外音VO）
@@ -60,29 +64,29 @@
 - **不修改原始输入**：不改写 `<storyboardItem>` 的任何字段；`prompt` 字段仅作画面参考
 - **不编造资产或台词**：只使用输入中提供的资产信息；无台词则标注「无台词」/ `No dialogue`
 
-### 5. 景别 → 镜头标签映射
+### 5. 景别 → 镜头表达映射
 
-| videoDesc 景别 | 英文标签 |
+| videoDesc 景别 | 中文表达 |
 |------|------|
-| 远景 | extreme wide shot |
-| 全景 | wide establishing shot |
-| 中景 | medium shot |
-| 近景 | close-up |
-| 特写 | close-up |
-| 大特写 | extreme close-up |
+| 远景 | 远景，交代环境与人物关系 |
+| 全景 | 全景，完整展示空间和人物 |
+| 中景 | 中景，突出人物互动 |
+| 近景 | 近景，强调表情和台词 |
+| 特写 | 特写，强调面部或关键物件 |
+| 大特写 | 大特写，强调决定性细节 |
 
-### 6. 运镜 → 镜头标签映射
+### 6. 运镜 → 镜头表达映射
 
-| videoDesc 运镜 | 英文标签 |
+| videoDesc 运镜 | 中文表达 |
 |------|------|
-| 静止 | static camera |
-| 推进 | dolly in / push in |
-| 拉远 | dolly out / pull back |
-| 跟踪 | tracking shot |
-| 摇镜 | pan left/right |
-| 甩镜 | whip pan |
-| 升降 | crane up/down |
-| 环绕 | surround shooting |
+| 静止 | 固定机位 |
+| 推进 | 缓慢推进 |
+| 拉远 | 缓慢拉远 |
+| 跟踪 | 跟随移动 |
+| 摇镜 | 横向摇镜 |
+| 甩镜 | 快速甩镜 |
+| 升降 | 升降镜头 |
+| 环绕 | 环绕拍摄 |
 
 ---
 
@@ -90,7 +94,7 @@
 
 - **单图首帧模式**：仅有首帧（分镜图），无尾帧；每次仅输入/输出一条分镜
 - **单条分镜输入/输出**：每次仅输入一条 `<storyboardItem>` 及其关联资产信息，输出也仅为一段完整的叙事式提示词
-- **叙事式英文提示词**：像写小说一样描写画面，禁止标签罗列（不写 `4K, cinematic, high quality` 这类堆砌）
+- **叙事式中文提示词**：像写小说一样描写画面，禁止标签罗列（不写画质、大片感、通用高质量标签这类堆砌）
 - **三段式结构**：风格基调 → 主体动作 + 场景环境 + 光线氛围 → 镜头收尾
 - **纯文本提示词**：提示词内**不使用任何 `@图N ` 引用**，全部内容用纯文本描述  
 - **严格遵循 videoDesc**：提示词内容严格基于 videoDesc 中的画面描述、时长、景别、运镜、角色动作、情绪、光影氛围、台词、音效字段生成，不编造额外内容
@@ -117,19 +121,21 @@
 
 | 原则 | 说明 | 示例 |
 |------|------|------|
-| 风格基调放最前 | 一句话定性整体气质 | `A cinematic epic scene` |
+| 风格基调放最前 | 一句话定性整体气质 | `A bright Chinese fantasy light-comedy scene` |
 | 主体+动作紧密绑定 | 主体后面直接跟动作，外观细节嵌入主体描述 | `A young man in dark flowing robes stands alone atop the city wall` |
 | 情绪用动作暗示 | 不直接陈述情绪 | ❌ `He is sad.` → ✅ `head drops slowly, shoulders slumped` |
 | 环境融入叙事 | 不罗列环境属性 | ✅ `hazy blue sky stretches over the emerald valley` |
 | 光线单独成句 | 光线方向+色温+质感+情绪 | `Warm golden hour light streams from behind, casting long shadows across the stone floor` |
 | 镜头语言收尾 | 一句话点睛 | `Captured in a wide establishing shot from a low-angle perspective, static camera` |
-| 禁止标签堆砌 | 不写 `4K, cinematic, high quality` | `cinematic` 融入风格基调即可 |
+| 禁止标签堆砌 | 不写画质、大片感、通用高质量标签 | 使用具体风格，如明亮暖色、轻喜剧反差、画面清晰 |
+
+> 安全表达替换：把伤重醒来改为从怪梦中醒来/灵力紊乱后醒来；把胸口血迹改为衣襟微乱/暗色旧污痕/尘痕；把剧痛改为不适/恍惚/虚弱；把痛得弓背改为略夸张地撑起身体；把呼吸急促改为喘了口气/呼吸稍乱。
 
 ---
 
 ## 生成规则
 
-1. **全部用英文**
+1. **默认全部用中文**，少量模型通用术语可保留英文；台词必须保持原文，不翻译
 2. **不使用任何 `@图N ` 引用**
 3. **叙事式描写**：禁止标签罗列和配置清单式写法
 4. **主体用文字描述**：简要描述主体外观特征，嵌入主体描述中
@@ -153,13 +159,13 @@
 资产信息[A001, role, 沈辞], [A003, scene, 城楼]
 
 ```xml
-<storyboardItem videoDesc='（沈辞独立城楼远眺苍茫大地、城楼、沈辞/城楼、4s、全景、静止、负手而立衣袂随风飘扬、坚定决绝、黄昏冷调侧逆光、无台词、风声衣袂声、A001/A003）' shouldGenerateImage="true"></storyboardItem>
+<storyboardItem videoDesc='（沈辞独立城楼远眺开阔山色、城楼、沈辞/城楼、4s、全景、静止、负手而立衣袂随风轻动、错愕但镇定、明亮暖色柔和天光、无台词、轻微环境声和衣料声、A001/A003）' shouldGenerateImage="true"></storyboardItem>
 ```
 
 输出：
 
 ```
-A cinematic epic scene with a cold, desaturated palette,
+A bright Chinese fantasy light-comedy scene with a warm readable palette,
 A lone man in dark flowing robes stands atop an ancient city wall, hands clasped behind his back, robes and hair billowing in the wind, gaze fixed on the vast land stretching to the horizon, jaw set firm, eyes unwavering.
 The weathered stone battlements frame the endless expanse below, rolling terrain fading into haze beneath a heavy dusk sky, clouds layered in muted golds and slate greys.
 Cold side-backlight from the setting sun carves a sharp silhouette, long shadows stretching across the stone floor, a faint warm rim outlining the figure against the cool atmosphere.
@@ -181,7 +187,7 @@ Captured in a wide establishing shot from a slightly low angle, static camera, s
 输出：
 
 ```
-A melancholic cinematic scene, dusk tones deepening,
+A bright Chinese fantasy light-comedy scene with warm readable tones,
 A young woman in a light-colored dress ascends the final stone steps onto the city wall, her gaze locked on the lone figure ahead, brow slightly furrowed, pace slowing as she approaches, lips parting softly.
 The ancient city wall stretches behind her, weathered stairs leading up from below, the distant skyline dimming as the last traces of golden hour fade into twilight.
 Fading warm light mingles with rising cool blue tones, the contrast between the two figures softened by the diffused remnants of sunset.

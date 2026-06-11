@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { detectMediaType } from "@/utils/videoWorkbench";
 const router = express.Router();
 
 interface VideoItem {
@@ -98,7 +99,7 @@ export default router.post(
         .leftJoin("o_assets", "o_assets2Storyboard.assetId", "o_assets.id")
         .leftJoin("o_image", "o_image.id", "o_assets.imageId")
         .whereIn("o_assets2Storyboard.storyboardId", storyIds as number[])
-        .select("o_assets.*", "o_image.filePath", "o_assets2Storyboard.storyboardId");
+        .select("o_assets.*", "o_image.filePath", "o_image.type as mediaType", "o_assets2Storyboard.storyboardId");
 
       const queryAudioIds = [...assetDatas.map((i) => i.id!), ...assetDatas.map((i) => i.assetsId!)].filter(Boolean);
       const assets2AudioData = await u
@@ -134,14 +135,15 @@ export default router.post(
 
       await Promise.all(
         assetDatas.map(async (i) => {
+          const fileType = detectMediaType(i.filePath, i.mediaType) ?? "image";
           const item = {
             id: i.id,
             name: i.name,
             describe: i.describe,
             type: i.type,
-            fileType: "image" as const,
+            fileType,
             sources: "assets",
-            src: i.filePath ? await u.oss.getSmallImageUrl(i.filePath) : "",
+            src: i.filePath ? (fileType === "image" ? await u.oss.getSmallImageUrl(i.filePath) : await u.oss.getFileUrl(i.filePath)) : "",
           };
           const sid = i.storyboardId as number;
           if (!otherDataMap[sid]) otherDataMap[sid] = [];
@@ -201,7 +203,14 @@ export default router.post(
             .map(async (v) => ({
               id: v.id!,
               src: v.filePath ? await u.oss.getFileUrl(v.filePath) : "",
-              state: v.state === "已完成" ? "已完成" : v.state === "生成中" ? "生成中" : v.state === "生成失败" ? "生成失败" : "未生成",
+              state:
+                v.state === "已完成" || v.state === "生成成功"
+                  ? "已完成"
+                  : v.state === "生成中"
+                    ? "生成中"
+                    : v.state === "生成失败"
+                      ? "生成失败"
+                      : "未生成",
               errorReason: v?.errorReason ?? "",
             })),
         ),

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { sanitizeImagePrompt } from "@/utils/promptHygiene";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
 
 const router = express.Router();
 
@@ -73,6 +75,7 @@ const requestSchema = {
 
 export default router.post("/", validateFields(requestSchema), async (req, res) => {
   const { projectId, model, resolution, id, type, name, prompt, base64 } = req.body;
+  const imageModel = resolveDefaultImageModel(model);
 
   // 1. 查询项目 & 获取类型配置
   const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
@@ -86,19 +89,20 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
     type,
     state: "生成中",
     assetsId: id,
-    model: model.split(/:(.+)/)[1],
+    model: imageModel.split(/:(.+)/)[1],
     resolution,
   });
   await u.db("o_assets").where("id", id).update({ imageId });
 
   // 3. 准备生成参数
   const imagePath = `/${projectId}/${cfg.dir}/${uuidv4()}.jpg`;
-  const userPrompt = buildPrompt(cfg, project.artStyle!, name, prompt);
-  const describe = `生成${cfg.label}图，名称：${name}，提示词：${prompt}`;
+  const safePrompt = sanitizeImagePrompt(prompt, { model: imageModel, assetType: type });
+  const userPrompt = buildPrompt(cfg, project.artStyle!, name, safePrompt);
+  const describe = `生成${cfg.label}图，名称：${name}，提示词：${safePrompt}`;
   const relatedObjects = { id, projectId, type: cfg.label };
 
   try {
-    const aiImage = u.Ai.Image(model);
+    const aiImage = u.Ai.Image(imageModel);
     await aiImage.run(
       {
         prompt: userPrompt,
@@ -125,7 +129,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
         state: "已完成",
         filePath: imagePath,
         type,
-        model: model.split(/:(.+)/)[1],
+        model: imageModel.split(/:(.+)/)[1],
         resolution,
       });
 

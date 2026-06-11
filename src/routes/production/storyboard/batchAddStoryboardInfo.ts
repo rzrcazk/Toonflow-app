@@ -3,6 +3,7 @@ import u from "@/utils";
 import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { groupStoryboardsForVideoTracks, normalizeSupportedDurations } from "@/utils/storyboardTrackGrouping";
 const router = express.Router();
 export default router.post(
   "/",
@@ -17,6 +18,7 @@ export default router.post(
         videoDesc: z.string(),
         shouldGenerateImage: z.number(),
         associateAssetsIds: z.array(z.number()),
+        index: z.number().optional(),
       }),
     ),
     scriptId: z.number(),
@@ -35,6 +37,7 @@ export default router.post(
         track: item.track,
         videoDesc: item.videoDesc,
         shouldGenerateImage: item.shouldGenerateImage,
+        index: item.index,
         createTime: Date.now(),
       });
       if (item.associateAssetsIds?.length) {
@@ -47,47 +50,60 @@ export default router.post(
       }
       item.id = id;
     }
-    const lastStoryboard = await u.db("o_storyboard").where("scriptId", scriptId);
+    const lastStoryboard = await u.db("o_storyboard").where({ scriptId, projectId }).orderBy("index", "asc").orderBy("id", "asc");
     if (!lastStoryboard || !lastStoryboard.length) return res.status(400).send(error("未查到分镜数据"));
-    //根据track分组
-    const storyboardGroupByTrack: Record<string, number[]> = {};
-    lastStoryboard.forEach((item: any) => {
-      if (!storyboardGroupByTrack[item.track]) {
-        storyboardGroupByTrack[item.track] = [];
-      }
-      storyboardGroupByTrack[item.track].push(item.id);
-    });
+    const storyboardsWithId = lastStoryboard.filter((item): item is typeof item & { id: number } => typeof item.id === "number");
+    const supportedDurations = await getProjectVideoSupportedDurations(projectId);
+    const trackGroups = groupStoryboardsForVideoTracks(storyboardsWithId, supportedDurations);
+    const existingTracks = await u.db("o_videoTrack").where({ scriptId, projectId }).orderBy("id", "asc");
 
-    //循环：先查询数据库中是否已存在相同track名称的trackId，有则复用，没有则新建
-    for (const track in storyboardGroupByTrack) {
-      const storyboardIds = storyboardGroupByTrack[track] ?? [];
+    for (let index = 0; index < trackGroups.length; index += 1) {
+      const group = trackGroups[index];
+      const storyboardIds = group.items.map((item) => item.id);
+      const existingTrack = existingTracks[index];
+      const trackId = existingTrack?.id ?? Date.now() + index;
 
-      // 计算该track下所有分镜的duration总和
-      const trackDuration = lastStoryboard
-        .filter((item: any) => item.track == track)
-        .reduce((sum: number, item: any) => sum + Number(item.duration), 0);
-
-      // 查找该scriptId下是否已有相同track名称且已分配trackId的分镜记录
-      const existingStoryboard = await u.db("o_storyboard").where({ scriptId, track }).whereNotNull("trackId").first();
-
-      let trackId: number;
-      if (existingStoryboard?.trackId) {
-        // 已存在相同track名称的trackId，直接复用，并更新duration
-        trackId = existingStoryboard.trackId;
-        await u.db("o_videoTrack").where("id", trackId).update({ duration: trackDuration });
+      if (existingTrack?.id) {
+        const previousStoryboardIds = await u
+          .db("o_storyboard")
+          .where({ trackId, scriptId, projectId })
+          .orderBy("index", "asc")
+          .orderBy("id", "asc")
+          .select("id")
+          .pluck("id");
+        const trackMembersChanged = !sameOrderedIds(previousStoryboardIds, storyboardIds);
+        await u.db("o_videoTrack").where("id", trackId).update({
+          duration: group.duration,
+          ...(trackMembersChanged
+            ? {
+                state: "未生成",
+                reason: "",
+                prompt: "",
+                videoId: null,
+                selectVideoId: null,
+              }
+            : {}),
+        });
       } else {
-        // 不存在，新建videoTrack
-        const newTrackId = Date.now()
         await u.db("o_videoTrack").insert({
-          id: newTrackId,
+          id: trackId,
           scriptId,
           projectId,
-          duration: trackDuration,
+          duration: group.duration,
         });
-        trackId = newTrackId;
       }
 
-      await u.db("o_storyboard").whereIn("id", storyboardIds).update({ trackId });
+      await u
+        .db("o_storyboard")
+        .whereIn("id", storyboardIds)
+        .update({ trackId, track: String(index + 1) });
+    }
+
+    const extraTrackIds = existingTracks.slice(trackGroups.length).map((track) => track.id).filter((id): id is number => typeof id === "number");
+    if (extraTrackIds.length) {
+      const trackIdsWithVideo = await u.db("o_video").whereIn("videoTrackId", extraTrackIds).select("videoTrackId").pluck("videoTrackId");
+      const removableTrackIds = extraTrackIds.filter((trackId) => !trackIdsWithVideo.includes(trackId));
+      if (removableTrackIds.length) await u.db("o_videoTrack").whereIn("id", removableTrackIds).delete();
     }
 
     const storyboardData = await Promise.all(
@@ -109,3 +125,18 @@ export default router.post(
     return res.status(200).send(success(storyboardData));
   },
 );
+
+async function getProjectVideoSupportedDurations(projectId: number): Promise<number[]> {
+  const project = await u.db("o_project").where("id", projectId).select("videoModel").first();
+  const [vendorId, modelName] = String(project?.videoModel ?? "").split(/:(.+)/);
+  if (!vendorId || !modelName) return normalizeSupportedDurations(null);
+
+  const modelList = await u.vendor.getModelList(vendorId);
+  const videoModel = modelList.find((model: any) => model.modelName === modelName);
+  return normalizeSupportedDurations(videoModel?.durationResolutionMap);
+}
+
+function sameOrderedIds(left: unknown[], right: number[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((id, index) => Number(id) === right[index]);
+}

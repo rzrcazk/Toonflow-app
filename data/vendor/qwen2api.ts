@@ -60,9 +60,9 @@ interface VendorConfig {
 }
 
 type ReferenceList =
-  | { type: "image"; sourceType: "base64"; base64: string }
-  | { type: "audio"; sourceType: "base64"; base64: string }
-  | { type: "video"; sourceType: "base64"; base64: string };
+  | { type: "image"; sourceType: "base64"; base64: string; url?: string }
+  | { type: "audio"; sourceType: "base64"; base64: string; url?: string }
+  | { type: "video"; sourceType: "base64"; base64: string; url?: string };
 
 interface ImageConfig {
   prompt: string;
@@ -139,9 +139,9 @@ const vendor: VendorConfig = {
   description: "通义千问 AI 平台适配，支持 qwen3.6-plus 图片生成和视频生成（文生视频、图生视频）能力\n\n需要自行部署 [Qwen2API](https://github.com/Rfym21/Qwen2API) 代理服务，并填入该服务配置的 API Key（如 sk-xxxxxxxx），而非 [chat.qwen.ai](http://chat.qwen.ai) 的 SessionID",
   inputs: [
     { key: "apiKey", label: "API Key", type: "password", required: true, placeholder: "请输入 Qwen2API 服务的 API Key (如 sk-xxxxxxxx)" },
-    { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：http://qwen2api:7860" },
+    { key: "baseUrl", label: "请求地址", type: "url", required: true, placeholder: "默认：http://127.0.0.1:7860" },
   ],
-  inputValues: { apiKey: "", baseUrl: "http://qwen2api:7860" },
+  inputValues: { apiKey: "sk-35b522b4373daf053493e281c5f2e9c61e97b1b9678cb5dd", baseUrl: "http://127.0.0.1:7860" },
   models: [
     // 图片模型
     {
@@ -264,18 +264,17 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   const imageRefs = config.referenceList?.filter((r) => r.type === "image") || [];
   let firstRef = imageRefs[0];
   if (imageRefs.length > 0) {
-    // 优先使用 URL（避免 base64 data URL 超长），fallback 到 base64
-    if ((firstRef as any).url) {
-      reqBody.image_url = (firstRef as any).url;
-    } else {
-      reqBody.image_url = firstRef.base64.startsWith("data:") ? firstRef.base64 : `data:image/png;base64,${firstRef.base64}`;
+    const imageUrl = firstRef.url?.trim();
+    if (!imageUrl || !/^https?:\/\//i.test(imageUrl)) {
+      throw new Error("Qwen2API 视频生成只支持通过 URL 传参考图，请确认本地 OSS URL 可被 Qwen2API 服务访问");
     }
+    reqBody.image_url = imageUrl;
   }
 
   // ============ 完整调试日志 ============
   logger("========== [Qwen2API VideoRequest DEBUG] ==========");
   logger(`POST URL: ${baseUrl}/v1/videos`);
-  logger(`HEADERS: ${JSON.stringify(headers)}`);
+  logger(`HEADERS: ${JSON.stringify({ ...headers, Authorization: "Bearer ***" })}`);
 
   // 截断 base64 避免刷屏
   const truncatedBody = JSON.stringify(reqBody, (k, v) => {
@@ -287,7 +286,7 @@ const videoRequest = async (config: VideoConfig, model: VideoModel): Promise<str
   logger(`REQUEST BODY:\n${truncatedBody}`);
 
   if (firstRef) {
-    logger(`firstRef.url: ${(firstRef as any).url || 'N/A (说明没收到 URL，走的是 base64 路径)'}`);
+    logger(`firstRef.url: ${firstRef.url || "N/A"}`);
     const b64 = firstRef.base64 || "";
     if (b64.length > 50) {
       logger(`firstRef.base64: ${b64.substring(0, 4)}...(内容太长)...${b64.slice(-5)} (${b64.length} chars)`);

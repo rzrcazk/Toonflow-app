@@ -5,6 +5,8 @@ import sharp from "sharp";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import { Output } from "ai";
+import { sanitizeImagePrompt } from "@/utils/promptHygiene";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
 const router = express.Router();
 
 export default router.post(
@@ -19,6 +21,7 @@ export default router.post(
     const { assetIds, projectId, scriptId, concurrentCount = 5 } = req.body;
 
     const projectSettingData = await u.db("o_project").where("id", projectId).select("imageModel", "imageQuality", "artStyle").first();
+    const imageModel = resolveDefaultImageModel(projectSettingData?.imageModel);
 
     const assetsDataArr = await u.db("o_assets").whereIn("id", assetIds).select("id", "describe", "name", "type", "assetsId");
     const parentIds = assetsDataArr.map((item) => item.assetsId).filter((id) => id !== null);
@@ -59,7 +62,7 @@ export default router.post(
         type: item.type,
         state: "生成中",
         resolution: projectSettingData?.imageQuality,
-        model: projectSettingData?.imageModel,
+        model: imageModel,
       });
       imageIdMap[item.id!] = imageId;
       await u.db("o_assets").where("id", item.id).update({ imageId: imageId });
@@ -82,16 +85,20 @@ export default router.post(
           },
         ],
       });
-        await u.db("o_assets").where("id", item.id).update({ prompt: text });
+      const prompt = sanitizeImagePrompt(text, {
+        model: imageModel,
+        assetType: item.type,
+      });
+      await u.db("o_assets").where("id", item.id).update({ prompt });
 
       const imageBase64 = imageUrlRecord[item.assetsId!] ? await u.oss.getImageBase64(imageUrlRecord[item.assetsId!]) : null;
       try {
         const repeloadObj = {
-          prompt: text,
+          prompt,
           size: projectSettingData?.imageQuality as "1K" | "2K" | "4K",
           aspectRatio: "16:9" as `${number}:${number}`,
         };
-        const imageCls = await u.Ai.Image(projectSettingData?.imageModel as `${string}:${string}`).run(
+        const imageCls = await u.Ai.Image(imageModel).run(
           {
             referenceList: imageBase64 ? [{ type: "image", base64: imageBase64 }] : [],
             ...repeloadObj,

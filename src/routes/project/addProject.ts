@@ -3,6 +3,8 @@ import u from "@/utils";
 import { z } from "zod";
 import { success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
+import { resolveDefaultVideoMode, resolveDefaultVideoModel } from "@/utils/defaultVideoModel";
 const router = express.Router();
 
 // 新增项目
@@ -34,11 +36,11 @@ export default router.post(
       videoRatio,
       directorManual,
       userId: 1,
-      imageModel,
-      videoModel,
+      imageModel: resolveDefaultImageModel(imageModel),
+      videoModel: resolveDefaultVideoModel(videoModel),
       createTime: Date.now(),
       imageQuality,
-      mode,
+      mode: resolveDefaultVideoMode(mode),
     });
 
     res.status(200).send(success({ message: "新增项目成功" }));

@@ -70,10 +70,10 @@ class OSS {
   }
 
   /**
-   * 读取图片文件并转换为 base64 编码的 Data URL。
+   * 读取媒体文件并转换为 base64 编码的 Data URL。
    * @param userRelPath 用户传入的相对文件路径（使用 / 作为分隔符）
    * @returns base64 编码的 Data URL (例如: data:image/png;base64,iVBORw0KGgo...)
-   * @throws 路径不在 OSS 根目录内、文件不存在、不是图片文件等错误
+   * @throws 路径不在 OSS 根目录内、文件不存在、不是支持的媒体文件等错误
    */
   async getImageBase64(userRelPath: string): Promise<string> {
     await this.ensureInit();
@@ -98,13 +98,22 @@ class OSS {
       ".ico": "image/x-icon",
       ".tiff": "image/tiff",
       ".tif": "image/tiff",
-      ".mp4": "video/mp4",
       ".mp3": "audio/mpeg",
+      ".wav": "audio/wav",
+      ".ogg": "audio/ogg",
+      ".aac": "audio/aac",
+      ".flac": "audio/flac",
+      ".m4a": "audio/mp4",
+      ".mp4": "video/mp4",
+      ".webm": "video/webm",
+      ".mov": "video/quicktime",
+      ".avi": "video/x-msvideo",
+      ".mkv": "video/x-matroska",
     };
 
     const mimeType = mimeTypes[ext];
     if (!mimeType) {
-      throw new Error(`不支持的图片格式: ${ext}。支持的格式: ${Object.keys(mimeTypes).join(", ")}`);
+      throw new Error(`不支持的媒体格式: ${ext}。支持的格式: ${Object.keys(mimeTypes).join(", ")}`);
     }
 
     // 读取文件并转换为 base64

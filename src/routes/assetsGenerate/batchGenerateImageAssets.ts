@@ -5,6 +5,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
 
 const router = express.Router();
 
@@ -75,6 +76,7 @@ const requestSchema = {
 
 export default router.post("/", validateFields(requestSchema), async (req, res) => {
   const { projectId, model, resolution, concurrentCount, items } = req.body;
+  const imageModel = resolveDefaultImageModel(model);
 
   // 1. 查询项目
   const project = await u.db("o_project").where("id", projectId).select("artStyle", "type", "intro").first();
@@ -112,7 +114,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
       const describe = `生成${cfg.label}图，名称：${item.name}，提示词：${item.prompt}`;
       const relatedObjects = { id: item.id, projectId, type: cfg.label };
       try {
-        const aiImage = u.Ai.Image(model);
+        const aiImage = u.Ai.Image(imageModel);
         await aiImage.run(
           {
             prompt: userPrompt,
@@ -140,7 +142,7 @@ export default router.post("/", validateFields(requestSchema), async (req, res) 
             state: "已完成",
             filePath: imagePath,
             type: item.type,
-            model: model.split(/:(.+)/)[1],
+            model: imageModel.split(/:(.+)/)[1],
             resolution,
           });
 

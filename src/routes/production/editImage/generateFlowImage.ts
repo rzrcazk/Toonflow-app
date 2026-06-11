@@ -4,6 +4,7 @@ import { z } from "zod";
 import { error, success } from "@/lib/responseFormat";
 import { validateFields } from "@/middleware/middleware";
 import axios from "axios";
+import { resolveDefaultImageModel } from "@/utils/defaultImageModel";
 const router = express.Router();
 
 async function urlToBase64(imageUrl: string): Promise<string> {
@@ -28,8 +29,9 @@ export default router.post(
   }),
   async (req, res) => {
     const { model, references = [], quality, ratio, prompt, projectId } = req.body;
+    const imageModel = resolveDefaultImageModel(model);
     try {
-      const imageClass = await u.Ai.Image(model).run(
+      const imageClass = await u.Ai.Image(imageModel).run(
         {
           prompt: prompt,
           referenceList: await (async () => {
